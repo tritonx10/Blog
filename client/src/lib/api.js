@@ -27,6 +27,6 @@ export const updateBook = (id, data) => api.put(`/books/${id}`, data);
 export const deleteBook = (id) => api.delete(`/books/${id}`);
 
 // ── Admin ──────────────────────────────────────────────
-export const adminLogin = (password) => api.post('/admin/login', { password });
+export const adminLogin = (email, password) => api.post('/admin/login', { email, password });
 
 export default api;

@@ -21,6 +21,7 @@ const TABS = [
 
 export default function Admin() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -38,7 +39,7 @@ export default function Admin() {
     setLoading(true);
     setLoginError('');
     try {
-      const res = await adminLogin(password);
+      const res = await adminLogin(email, password);
       if (res.data.success) {
         setIsAuthenticated(true);
         localStorage.setItem('admin_token', res.data.token);
@@ -157,15 +158,28 @@ export default function Admin() {
         
         <form onSubmit={handleLogin} className="space-y-4 text-left">
           <div>
+            <label className="block text-xs font-sans font-medium text-brown-lighter uppercase tracking-wider mb-2">Email Address</label>
+            <input
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full px-4 py-3 bg-parchment-dark/30 border border-parchment-dark rounded-xl focus:outline-none focus:border-gold transition-colors font-sans text-brown"
+              placeholder="suhanig724@gmail.com"
+              disabled={loading}
+              autoFocus
+            />
+          </div>
+          <div>
             <label className="block text-xs font-sans font-medium text-brown-lighter uppercase tracking-wider mb-2">Passphrase</label>
             <input
               type="password"
+              required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full px-4 py-3 bg-parchment-dark/30 border border-parchment-dark rounded-xl focus:outline-none focus:border-gold transition-colors font-sans text-brown"
               placeholder="••••••••"
               disabled={loading}
-              autoFocus
             />
           </div>
           {loginError && <p className="text-red-500 text-sm italic">{loginError}</p>}
