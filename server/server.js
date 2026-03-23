@@ -8,23 +8,25 @@ const app = express();
 
 // Database Connection
 const MONGO_URI = process.env.MONGO_URI;
+let lastDbError = null;
 
 if (process.env.VERCEL && !MONGO_URI) {
-  console.warn('⚠️ WARNING: MONGO_URI is not set on Vercel. Database operations will fail.');
+  lastDbError = "Missing 'MONGO_URI' in Vercel. Please add it to your project environment variables.";
 }
 
-let lastDbError = null;
-mongoose.connect(MONGO_URI || 'mongodb://localhost:27017/suhani_literary', {
-  serverSelectionTimeoutMS: 3000,
-})
-  .then(() => {
-    console.log('🍃 MongoDB connected successfully');
-    lastDbError = null;
+if (!lastDbError) {
+  mongoose.connect(MONGO_URI || 'mongodb://localhost:27017/suhani_literary', {
+    serverSelectionTimeoutMS: 3000,
   })
-  .catch(err => {
-    console.error('❌ MongoDB connection error:', err);
-    lastDbError = err.message;
-  });
+    .then(() => {
+      console.log('🍃 MongoDB connected successfully');
+      lastDbError = null;
+    })
+    .catch(err => {
+      console.error('❌ MongoDB connection error:', err);
+      lastDbError = err.message;
+    });
+}
 
 const checkDbConnection = (req, res, next) => {
   if (mongoose.connection.readyState !== 1 && !req.path.includes('health')) {
