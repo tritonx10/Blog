@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { getPostBySlug, addPostComment } from '../lib/api';
+import { getPostBySlug, addPostComment, deletePostComment } from '../lib/api';
 import { Spinner } from '../components/Loader';
 import CommentSection from '../components/CommentSection';
 import { ArrowLeft, Clock, Share2, Check, Calendar } from 'lucide-react';
@@ -28,6 +28,16 @@ export default function PostDetail() {
       setPost(res.data);
     } catch (err) {
       alert('Failed to post comment.');
+    }
+  };
+
+  const handleDeleteComment = async (commentId) => {
+    if (!window.confirm('Delete this comment?')) return;
+    try {
+      const res = await deletePostComment(post._id, commentId);
+      setPost(res.data);
+    } catch (err) {
+      alert('Failed to delete comment.');
     }
   };
 
@@ -92,8 +102,8 @@ export default function PostDetail() {
 
       {/* Cover image */}
       {post.coverImage && (
-        <div className="rounded-2xl overflow-hidden mb-10 shadow-warm">
-          <img src={post.coverImage} alt={post.title} className="w-full object-cover max-h-96" />
+        <div className="rounded-2xl overflow-hidden mb-10 shadow-warm bg-parchment-dark">
+          <img src={post.coverImage} alt={post.title} className="w-full object-contain max-h-[500px]" />
         </div>
       )}
 
@@ -134,7 +144,7 @@ export default function PostDetail() {
         </button>
       </div>
 
-      <CommentSection comments={post.comments} onSubmit={handleAddComment} />
+      <CommentSection comments={post.comments} onSubmit={handleAddComment} onDelete={handleDeleteComment} />
     </motion.div>
   );
 }

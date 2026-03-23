@@ -106,3 +106,18 @@ exports.addComment = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+exports.deleteComment = async (req, res) => {
+  try {
+    const post = await db.findById(COLLECTION, req.params.id);
+    if (!post) return res.status(404).json({ message: 'Not found' });
+    
+    if (!post.comments) return res.status(404).json({ message: 'No comments' });
+    
+    post.comments = post.comments.filter(c => c._id !== req.params.commentId);
+    const updated = await db.update(COLLECTION, req.params.id, { comments: post.comments });
+    res.json(updated);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};

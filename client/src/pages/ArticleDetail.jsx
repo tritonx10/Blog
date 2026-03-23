@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { getArticleBySlug, addArticleComment } from '../lib/api';
+import { getArticleBySlug, addArticleComment, deleteArticleComment } from '../lib/api';
 import { Spinner } from '../components/Loader';
 import CommentSection from '../components/CommentSection';
 import { ArrowLeft, Clock, Share2, Check, Calendar } from 'lucide-react';
@@ -28,6 +28,16 @@ export default function ArticleDetail() {
       setArticle(res.data);
     } catch (err) {
       alert('Failed to post comment.');
+    }
+  };
+
+  const handleDeleteComment = async (commentId) => {
+    if (!window.confirm('Delete this comment?')) return;
+    try {
+      const res = await deleteArticleComment(article._id, commentId);
+      setArticle(res.data);
+    } catch (err) {
+      alert('Failed to delete comment.');
     }
   };
 
@@ -87,8 +97,8 @@ export default function ArticleDetail() {
       )}
 
       {article.coverImage && (
-        <div className="rounded-2xl overflow-hidden mb-10 shadow-warm">
-          <img src={article.coverImage} alt={article.title} className="w-full object-cover max-h-96" />
+        <div className="rounded-2xl overflow-hidden mb-10 shadow-warm bg-parchment-dark">
+          <img src={article.coverImage} alt={article.title} className="w-full object-contain max-h-[500px]" />
         </div>
       )}
 
@@ -123,7 +133,7 @@ export default function ArticleDetail() {
         </button>
       </div>
 
-      <CommentSection comments={article.comments} onSubmit={handleAddComment} />
+      <CommentSection comments={article.comments} onSubmit={handleAddComment} onDelete={handleDeleteComment} />
     </motion.div>
   );
 }

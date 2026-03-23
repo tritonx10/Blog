@@ -2,10 +2,11 @@ import { useState } from 'react';
 import { Send, User } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-export default function CommentSection({ comments = [], onSubmit }) {
+export default function CommentSection({ comments = [], onSubmit, onDelete }) {
   const [name, setName] = useState('');
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(false);
+  const isAdmin = typeof window !== 'undefined' && localStorage.getItem('adminToken') === 'admin_authenticated';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -72,9 +73,19 @@ export default function CommentSection({ comments = [], onSubmit }) {
                 </div>
                 <div>
                   <h4 className="font-sans font-medium text-ink">{comment.name || 'Anonymous Reader'}</h4>
-                  <p className="text-xs text-brown-lighter font-sans">
-                    {new Date(comment.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
-                  </p>
+                  <div className="flex items-center gap-3">
+                    <p className="text-xs text-brown-lighter font-sans">
+                      {new Date(comment.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
+                    </p>
+                    {isAdmin && onDelete && (
+                      <button 
+                        onClick={() => onDelete(comment._id)}
+                        className="text-xs text-red-500 hover:text-red-700 transition-colors"
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
               <p className="font-body text-brown leading-relaxed pl-11">{comment.text}</p>

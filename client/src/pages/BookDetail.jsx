@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getBookBySlug, addBookComment } from '../lib/api';
+import { getBookBySlug, addBookComment, deleteBookComment } from '../lib/api';
 import { Spinner } from '../components/Loader';
 import CommentSection from '../components/CommentSection';
 import { ArrowLeft, BookOpen, Share2, Check, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
@@ -28,6 +28,16 @@ export default function BookDetail() {
       setBook(res.data);
     } catch (err) {
       alert('Failed to post comment.');
+    }
+  };
+
+  const handleDeleteComment = async (commentId) => {
+    if (!window.confirm('Delete this comment?')) return;
+    try {
+      const res = await deleteBookComment(book._id, commentId);
+      setBook(res.data);
+    } catch (err) {
+      alert('Failed to delete comment.');
     }
   };
 
@@ -170,7 +180,7 @@ export default function BookDetail() {
         </div>
       )}
 
-      <CommentSection comments={book.comments} onSubmit={handleAddComment} />
+      <CommentSection comments={book.comments} onSubmit={handleAddComment} onDelete={handleDeleteComment} />
     </motion.div>
   );
 }
