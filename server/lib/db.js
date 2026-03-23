@@ -1,49 +1,55 @@
-const Post = require('../models/Post');
-const Article = require('../models/Article');
-const Book = require('../models/Book');
-
-const MODELS = {
-  posts: Post,
-  articles: Article,
-  books: Book
-};
+const { kv } = require('@vercel/kv');
 
 const db = {
   find: async (collection) => {
-    const Model = MODELS[collection];
-    return await Model.find({}).sort({ createdAt: -1 });
+    try {
+      return await kv.get(collection) || [];
+    } catch (err) {
+      console.error(`KV find error (${collection}):`, err);
+      return [];
+    }
   },
   
   findOne: async (collection, predicate) => {
-    // Note: predicate is a function in the old version, but we'll try to find by slug first
-    // In our controllers, it's usually (a => a.slug === req.params.slug)
-    // We'll just fetch all and find, OR improve controllers later.
-    // For now, let's keep it compatible.
-    const Model = MODELS[collection];
-    const items = await Model.find({});
+    const items = await db.find(collection);
     return items.find(predicate);
   },
   
   findById: async (collection, id) => {
-    const Model = MODELS[collection];
-    return await Model.findById(id);
+    const items = await db.find(collection);
+    return items.find(item => item._id === id);
   },
 
   create: async (collection, newItem) => {
-    const Model = MODELS[collection];
-    const item = new Model(newItem);
-    return await item.save();
+    const items = await db.find(collection);
+    const itemWithId = { 
+      ...newItem, 
+      _id: Date.now().toString(),
+      createdAt: new Date().toISOString()
+    };
+    items.push(itemWithId);
+    await kv.set(collection, items);
+    return itemWithId;
   },
 
   update: async (collection, id, updateData) => {
-    const Model = MODELS[collection];
-    return await Model.findByIdAndUpdate(id, updateData, { new: true });
+    const items = await db.find(collection);
+    const index = items.findIndex(item => item._id === id);
+    if (index === -1) return null;
+    
+    items[index] = { ...items[index], ...updateData, updatedAt: new Date().toISOString() };
+    await kv.set(collection, items);
+    return items[index];
   },
 
   delete: async (collection, id) => {
-    const Model = MODELS[collection];
-    const result = await Model.findByIdAndDelete(id);
-    return !!result;
+    const items = await db.find(collection);
+    const index = items.findIndex(item => item._id === id);
+    if (index === -1) return false;
+    
+    items.splice(index, 1);
+    await kv.set(collection, items);
+    return true;
   }
 };
 
