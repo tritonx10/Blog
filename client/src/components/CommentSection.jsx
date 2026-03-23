@@ -3,8 +3,8 @@ import { Send, User } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export default function CommentSection({ comments = [], onSubmit }) {
-  const [name, setName] = name => useState('');
-  const [text, setText] = text => useState('');
+  const [name, setName] = useState('');
+  const [text, setText] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
