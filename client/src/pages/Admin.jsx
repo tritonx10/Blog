@@ -39,7 +39,7 @@ export default function Admin() {
     setLoading(true);
     setLoginError('');
     try {
-      const res = await adminLogin(email, password);
+      const res = await adminLogin(email.trim(), password.trim());
       if (res.data.success) {
         setIsAuthenticated(true);
         localStorage.setItem('admin_token', res.data.token);
@@ -163,9 +163,9 @@ export default function Admin() {
               type="email"
               required
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => setEmail(e.target.value.trim())}
               className="w-full px-4 py-3 bg-parchment-dark/30 border border-parchment-dark rounded-xl focus:outline-none focus:border-gold transition-colors font-sans text-brown"
-              placeholder="suhanig724@gmail.com"
+              placeholder="admin@example.com"
               disabled={loading}
               autoFocus
             />

@@ -20,7 +20,10 @@ app.use('/api/books', require('./routes/books'));
 // Admin auth endpoint
 app.post('/api/admin/login', (req, res) => {
   const { email, password } = req.body;
-  if (email === process.env.ADMIN_EMAIL && password === process.env.ADMIN_PASSWORD) {
+  const adminEmail = process.env.ADMIN_EMAIL?.trim();
+  const adminPassword = process.env.ADMIN_PASSWORD?.trim();
+
+  if (email?.trim() === adminEmail && password?.trim() === adminPassword) {
     res.json({ success: true, token: 'admin_authenticated' });
   } else {
     res.status(401).json({ success: false, message: 'Invalid credentials' });
