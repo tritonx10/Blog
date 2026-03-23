@@ -3,9 +3,13 @@ import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
 import Image from '@tiptap/extension-image';
 import Placeholder from '@tiptap/extension-placeholder';
-import { Bold, Italic, List, ListOrdered, Quote, Link as LinkIcon, Image as ImageIcon, Heading1, Heading2 } from 'lucide-react';
+import { Bold, Italic, List, ListOrdered, Quote, Link as LinkIcon, Image as ImageIcon, Heading1, Heading2, ScanLine } from 'lucide-react';
+import { useState } from 'react';
+import { AnimatePresence } from 'framer-motion';
+import HandwritingScanner from './HandwritingScanner';
 
 export default function TipTapEditor({ content, onChange }) {
+  const [scannerOpen, setScannerOpen] = useState(false);
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -106,6 +110,10 @@ export default function TipTapEditor({ content, onChange }) {
         <MenuButton onClick={addImage} title="Image">
           <ImageIcon size={18} />
         </MenuButton>
+        <div className="w-px h-6 bg-parchment-dark mx-1" />
+        <MenuButton onClick={() => setScannerOpen(true)} title="Scan handwriting / photo">
+          <ScanLine size={18} />
+        </MenuButton>
       </div>
 
       {/* Content Area */}
@@ -113,6 +121,19 @@ export default function TipTapEditor({ content, onChange }) {
         editor={editor}
         className="prose-literary min-h-[300px] max-h-[600px] overflow-y-auto px-5 py-4 focus:outline-none"
       />
+
+      {/* Handwriting Scanner Modal */}
+      <AnimatePresence>
+        {scannerOpen && (
+          <HandwritingScanner
+            onInsert={(html) => {
+              editor.chain().focus().insertContent(html).run();
+              onChange(editor.getHTML());
+            }}
+            onClose={() => setScannerOpen(false)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
