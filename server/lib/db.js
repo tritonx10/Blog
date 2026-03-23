@@ -1,50 +1,78 @@
-const Post = require('../models/Post');
-const Article = require('../models/Article');
-const Book = require('../models/Book');
+const fs = require('fs').promises;
+const path = require('path');
 
-const MODELS = {
-  posts: Post,
-  articles: Article,
-  books: Book
-};
+const DATA_DIR = process.env.VERCEL ? '/tmp' : path.join(__dirname, '../data');
+
+async function ensureDataDir() {
+  try {
+    await fs.access(DATA_DIR);
+  } catch {
+    await fs.mkdir(DATA_DIR, { recursive: true });
+  }
+}
+
+async function readCollection(collectionName) {
+  await ensureDataDir();
+  const filePath = path.join(DATA_DIR, `${collectionName}.json`);
+  try {
+    const data = await fs.readFile(filePath, 'utf8');
+    return JSON.parse(data);
+  } catch {
+    return [];
+  }
+}
+
+async function writeCollection(collectionName, data) {
+  await ensureDataDir();
+  const filePath = path.join(DATA_DIR, `${collectionName}.json`);
+  await fs.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
+}
 
 const db = {
-  find: async (collection) => {
-    const Model = MODELS[collection];
-    return await Model.find({}).sort({ createdAt: -1 });
-  },
+  find: async (collection) => await readCollection(collection),
   
   findOne: async (collection, predicate) => {
-    // Note: predicate is a function in the old version, but we'll try to find by slug first
-    // In our controllers, it's usually (a => a.slug === req.params.slug)
-    // We'll just fetch all and find, OR improve controllers later.
-    // For now, let's keep it compatible.
-    const Model = MODELS[collection];
-    const items = await Model.find({});
+    const items = await readCollection(collection);
     return items.find(predicate);
   },
   
   findById: async (collection, id) => {
-    const Model = MODELS[collection];
-    return await Model.findById(id);
+    const items = await readCollection(collection);
+    return items.find(item => item._id === id);
   },
 
   create: async (collection, newItem) => {
-    const Model = MODELS[collection];
-    const item = new Model(newItem);
-    return await item.save();
+    const items = await readCollection(collection);
+    const itemWithId = { 
+      ...newItem, 
+      _id: Date.now().toString(),
+      createdAt: new Date().toISOString()
+    };
+    items.push(itemWithId);
+    await writeCollection(collection, items);
+    return itemWithId;
   },
 
   update: async (collection, id, updateData) => {
-    const Model = MODELS[collection];
-    return await Model.findByIdAndUpdate(id, updateData, { new: true });
+    const items = await readCollection(collection);
+    const index = items.findIndex(item => item._id === id);
+    if (index === -1) return null;
+    
+    items[index] = { ...items[index], ...updateData, updatedAt: new Date().toISOString() };
+    await writeCollection(collection, items);
+    return items[index];
   },
 
   delete: async (collection, id) => {
-    const Model = MODELS[collection];
-    const result = await Model.findByIdAndDelete(id);
-    return !!result;
+    const items = await readCollection(collection);
+    const index = items.findIndex(item => item._id === id);
+    if (index === -1) return false;
+    
+    items.splice(index, 1);
+    await writeCollection(collection, items);
+    return true;
   }
 };
 
 module.exports = db;
+
