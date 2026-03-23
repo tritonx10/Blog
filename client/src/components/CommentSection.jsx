@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Send, User } from 'lucide-react';
+import { Send, User, Trash2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export default function CommentSection({ comments = [], onSubmit, onDelete }) {
@@ -80,9 +80,10 @@ export default function CommentSection({ comments = [], onSubmit, onDelete }) {
                     {isAdmin && onDelete && (
                       <button 
                         onClick={() => onDelete(comment._id)}
-                        className="text-xs text-red-500 hover:text-red-700 transition-colors"
+                        className="p-1 text-brown-lighter hover:text-red-500 transition-colors"
+                        title="Delete Comment"
                       >
-                        Delete
+                        <Trash2 size={16} />
                       </button>
                     )}
                   </div>
