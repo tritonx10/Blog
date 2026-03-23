@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 const app = express();
 
 // Middleware
@@ -26,6 +27,41 @@ app.post('/api/admin/login', (req, res) => {
     res.json({ success: true, token: 'admin_authenticated' });
   } else {
     res.status(401).json({ success: false, message: 'Invalid credentials' });
+  }
+});
+
+// OCR endpoint using Gemini Flash Vision
+app.post('/api/ocr', async (req, res) => {
+  try {
+    const { imageData, mimeType = 'image/jpeg' } = req.body;
+    if (!imageData) return res.status(400).json({ error: 'No image data provided' });
+
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) return res.status(500).json({ error: 'GEMINI_API_KEY not configured on server' });
+
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+
+    const result = await model.generateContent([
+      {
+        inlineData: {
+          data: imageData.replace(/^data:image\/[a-z]+;base64,/, ''),
+          mimeType,
+        },
+      },
+      `You are an expert handwriting transcription assistant.
+Transcribe EVERY word visible in this handwritten image as accurately as possible.
+Preserve the original paragraph structure — use a blank line between distinct paragraphs or sections.
+DO NOT add any commentary, preamble, or explanation.
+DO NOT include bullet points unless the handwriting itself uses them.
+OUTPUT only the transcribed text, nothing else.`,
+    ]);
+
+    const text = result.response.text();
+    res.json({ text });
+  } catch (err) {
+    console.error('OCR error:', err.message);
+    res.status(500).json({ error: err.message || 'OCR failed' });
   }
 });
 
