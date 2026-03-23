@@ -2,7 +2,14 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 
+const mongoose = require('mongoose');
+
 const app = express();
+
+// Database Connection
+mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/suhani_literary')
+  .then(() => console.log('🍃 MongoDB connected successfully'))
+  .catch(err => console.error('❌ MongoDB connection error:', err));
 
 // Middleware
 app.use(cors({

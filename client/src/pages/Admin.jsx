@@ -274,14 +274,14 @@ export default function Admin() {
       {/* Form Overlay */}
       <AnimatePresence>
         {isFormOpen && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-brown/40 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-brown/40 backdrop-blur-sm p-4 overflow-hidden">
             <motion.div
               initial={{ opacity: 0, y: 50 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 50 }}
-              className="w-full max-w-4xl bg-parchment rounded-2xl shadow-warm-lg overflow-hidden flex flex-col max-h-[90vh]"
+              className="w-full max-w-4xl bg-parchment rounded-2xl shadow-warm-lg overflow-hidden flex flex-col max-h-[95vh] focus-within:ring-0"
             >
-              <form onSubmit={handleSave} className="flex flex-col h-full">
+              <form onSubmit={handleSave} className="flex flex-col min-h-0">
                 {/* Header */}
                 <div className="px-8 py-5 border-b border-parchment-dark flex items-center justify-between sticky top-0 bg-parchment z-10">
                   <h2 className="font-heading text-2xl text-ink">
