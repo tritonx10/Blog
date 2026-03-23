@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
-import { Feather, Menu, X } from 'lucide-react';
+import { BookOpen, Menu, X } from 'lucide-react';
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
@@ -17,7 +17,7 @@ export default function Navbar() {
     <nav className="sticky top-0 z-50 bg-parchment/90 backdrop-blur-md border-b border-parchment-dark">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2.5 group">
-          <Feather size={22} className="text-gold group-hover:text-gold-dark transition-colors" />
+          <BookOpen size={22} className="text-gold group-hover:text-gold-dark transition-colors" />
           <span className="font-heading text-xl font-semibold text-ink tracking-wide">
             Suhani Gupta
           </span>
