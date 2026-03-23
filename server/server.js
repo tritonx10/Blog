@@ -13,17 +13,25 @@ if (process.env.VERCEL && !MONGO_URI) {
   console.warn('⚠️ WARNING: MONGO_URI is not set on Vercel. Database operations will fail.');
 }
 
+let lastDbError = null;
 mongoose.connect(MONGO_URI || 'mongodb://localhost:27017/suhani_literary', {
-  serverSelectionTimeoutMS: 3000, // Fail after 3 seconds
+  serverSelectionTimeoutMS: 3000,
 })
-  .then(() => console.log('🍃 MongoDB connected successfully'))
-  .catch(err => console.error('❌ MongoDB connection error:', err));
+  .then(() => {
+    console.log('🍃 MongoDB connected successfully');
+    lastDbError = null;
+  })
+  .catch(err => {
+    console.error('❌ MongoDB connection error:', err);
+    lastDbError = err.message;
+  });
 
-// Database connection state middleware (optional, but good for reporting)
 const checkDbConnection = (req, res, next) => {
   if (mongoose.connection.readyState !== 1 && !req.path.includes('health')) {
     return res.status(503).json({ 
-      message: 'Database connection is being established or failed. Please check Atlas IP whitelist (0.0.0.0/0).' 
+      message: 'Database connection failed.',
+      error: lastDbError || 'Connection in progress...',
+      suggestion: 'Please check your MONGO_URI and ensure Atlas IP whitelist is set to 0.0.0.0/0'
     });
   }
   next();
