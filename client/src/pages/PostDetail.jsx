@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { getPostBySlug } from '../lib/api';
+import { getPostBySlug, addPostComment } from '../lib/api';
 import { Spinner } from '../components/Loader';
+import CommentSection from '../components/CommentSection';
 import { ArrowLeft, Clock, Share2, Check, Calendar } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -20,6 +21,15 @@ export default function PostDetail() {
       .catch(() => setError('Post not found.'))
       .finally(() => setLoading(false));
   }, [slug]);
+
+  const handleAddComment = async (data) => {
+    try {
+      const res = await addPostComment(post._id, data);
+      setPost(res.data);
+    } catch (err) {
+      alert('Failed to post comment.');
+    }
+  };
 
   async function handleShare() {
     const url = window.location.href;
@@ -123,6 +133,8 @@ export default function PostDetail() {
           {copied ? <><Check size={15} /> Link Copied!</> : <><Share2 size={15} /> Share</>}
         </button>
       </div>
+
+      <CommentSection comments={post.comments} onSubmit={handleAddComment} />
     </motion.div>
   );
 }

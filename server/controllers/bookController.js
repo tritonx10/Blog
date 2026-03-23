@@ -93,3 +93,28 @@ exports.deleteBook = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+exports.addComment = async (req, res) => {
+  try {
+    const { name, text } = req.body;
+    if (!text?.trim()) return res.status(400).json({ message: 'Comment text is required' });
+
+    const item = await db.findById(COLLECTION, req.params.id);
+    if (!item) return res.status(404).json({ message: 'Not found' });
+    
+    if (!item.comments) item.comments = [];
+    const newComment = {
+      _id: Date.now().toString() + Math.random().toString(36).substring(2, 7),
+      name: name?.trim() || 'Reader',
+      text: text.trim(),
+      createdAt: new Date().toISOString()
+    };
+    
+    item.comments.push(newComment);
+    const updated = await db.update(COLLECTION, req.params.id, { comments: item.comments });
+    res.json(updated);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+

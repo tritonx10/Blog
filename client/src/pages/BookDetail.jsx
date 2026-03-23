@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getBookBySlug } from '../lib/api';
+import { getBookBySlug, addBookComment } from '../lib/api';
 import { Spinner } from '../components/Loader';
+import CommentSection from '../components/CommentSection';
 import { ArrowLeft, BookOpen, Share2, Check, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
 
 export default function BookDetail() {
@@ -20,6 +21,15 @@ export default function BookDetail() {
       .catch(() => setError('Book not found.'))
       .finally(() => setLoading(false));
   }, [slug]);
+
+  const handleAddComment = async (data) => {
+    try {
+      const res = await addBookComment(book._id, data);
+      setBook(res.data);
+    } catch (err) {
+      alert('Failed to post comment.');
+    }
+  };
 
   async function handleShare() {
     const url = window.location.href;
@@ -159,6 +169,8 @@ export default function BookDetail() {
           </div>
         </div>
       )}
+
+      <CommentSection comments={book.comments} onSubmit={handleAddComment} />
     </motion.div>
   );
 }

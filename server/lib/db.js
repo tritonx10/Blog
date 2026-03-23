@@ -1,75 +1,89 @@
-const fs = require('fs').promises;
-const path = require('path');
+const JSON_BLOB_URL = 'https://jsonblob.com/api/jsonBlob/019d1bd7-8b34-7199-bdbe-0600666e0221';
 
-const DATA_DIR = process.env.VERCEL ? '/tmp' : path.join(__dirname, '../data');
-
-async function ensureDataDir() {
+async function readData() {
   try {
-    await fs.access(DATA_DIR);
-  } catch {
-    await fs.mkdir(DATA_DIR, { recursive: true });
+    const res = await fetch(JSON_BLOB_URL, {
+      headers: { 'Accept': 'application/json' }
+    });
+    if (!res.ok) throw new Error('Failed to fetch blob');
+    return await res.json();
+  } catch (err) {
+    console.error('Blob fetch error:', err);
+    return { posts: [], articles: [], books: [] };
   }
 }
 
-async function readCollection(collectionName) {
-  await ensureDataDir();
-  const filePath = path.join(DATA_DIR, `${collectionName}.json`);
+async function writeData(data) {
   try {
-    const data = await fs.readFile(filePath, 'utf8');
-    return JSON.parse(data);
-  } catch {
-    return [];
+    const res = await fetch(JSON_BLOB_URL, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) throw new Error('Failed to update blob');
+  } catch (err) {
+    console.error('Blob update error:', err);
   }
-}
-
-async function writeCollection(collectionName, data) {
-  await ensureDataDir();
-  const filePath = path.join(DATA_DIR, `${collectionName}.json`);
-  await fs.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
 }
 
 const db = {
-  find: async (collection) => await readCollection(collection),
+  find: async (collection) => {
+    const data = await readData();
+    return data[collection] || [];
+  },
   
   findOne: async (collection, predicate) => {
-    const items = await readCollection(collection);
+    const data = await readData();
+    const items = data[collection] || [];
     return items.find(predicate);
   },
   
   findById: async (collection, id) => {
-    const items = await readCollection(collection);
+    const data = await readData();
+    const items = data[collection] || [];
     return items.find(item => item._id === id);
   },
 
   create: async (collection, newItem) => {
-    const items = await readCollection(collection);
+    const data = await readData();
+    if (!data[collection]) data[collection] = [];
+    
     const itemWithId = { 
       ...newItem, 
       _id: Date.now().toString(),
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      comments: []
     };
-    items.push(itemWithId);
-    await writeCollection(collection, items);
+    data[collection].push(itemWithId);
+    
+    await writeData(data);
     return itemWithId;
   },
 
   update: async (collection, id, updateData) => {
-    const items = await readCollection(collection);
-    const index = items.findIndex(item => item._id === id);
+    const data = await readData();
+    if (!data[collection]) return null;
+    
+    const index = data[collection].findIndex(item => item._id === id);
     if (index === -1) return null;
     
-    items[index] = { ...items[index], ...updateData, updatedAt: new Date().toISOString() };
-    await writeCollection(collection, items);
-    return items[index];
+    data[collection][index] = { ...data[collection][index], ...updateData, updatedAt: new Date().toISOString() };
+    await writeData(data);
+    return data[collection][index];
   },
 
   delete: async (collection, id) => {
-    const items = await readCollection(collection);
-    const index = items.findIndex(item => item._id === id);
+    const data = await readData();
+    if (!data[collection]) return false;
+    
+    const index = data[collection].findIndex(item => item._id === id);
     if (index === -1) return false;
     
-    items.splice(index, 1);
-    await writeCollection(collection, items);
+    data[collection].splice(index, 1);
+    await writeData(data);
     return true;
   }
 };
