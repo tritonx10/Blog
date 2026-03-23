@@ -19,8 +19,12 @@
       "dest": "server/server.js"
     },
     {
+      "src": "/admin",
+      "dest": "client/index.html"
+    },
+    {
       "src": "/(.*)",
-      "dest": "/index.html"
+      "dest": "client/$1"
     }
   ]
 }
