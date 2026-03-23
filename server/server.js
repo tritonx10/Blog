@@ -31,12 +31,12 @@ app.post('/api/admin/login', (req, res) => {
 
 // Health check
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', message: 'Suhani\'s Literary API is running 🕯️ (Vercel KV Mode)' });
+  res.json({ status: 'ok', message: 'Suhani\'s Literary API is running 🕯️ (File Storage Mode)' });
 });
 
 // Start server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`🕯️ Server running on http://localhost:${PORT}`);
-  console.log('📦 Data storage: Vercel KV (Redis)');
+  console.log('📦 Data storage: Local JSON files (server/data/)');
 });
