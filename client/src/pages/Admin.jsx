@@ -94,7 +94,9 @@ export default function Admin() {
       else if (activeTab === 'books') await deleteBook(id);
       fetchData();
     } catch (err) {
-      alert('Delete failed');
+      console.error('Delete error:', err);
+      const apiError = err.response?.data?.error;
+      alert(`Delete failed: ${apiError || 'Unknown error'}`);
     }
   }
 
@@ -136,7 +138,13 @@ export default function Admin() {
         fetchData();
       }, 1500);
     } catch (err) {
-      setFormMsg({ type: 'error', text: err.response?.data?.message || 'Save failed' });
+      console.error('Save error:', err);
+      const apiError = err.response?.data?.error;
+      const apiMsg = err.response?.data?.message;
+      setFormMsg({ 
+        type: 'error', 
+        text: `${apiMsg || 'Save failed'} ${apiError ? `(${apiError})` : ''}` 
+      });
     } finally {
       setLoading(false);
     }
