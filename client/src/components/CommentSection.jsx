@@ -6,7 +6,7 @@ export default function CommentSection({ comments = [], onSubmit, onDelete }) {
   const [name, setName] = useState('');
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(false);
-  const isAdmin = typeof window !== 'undefined' && localStorage.getItem('adminToken') === 'admin_authenticated';
+  const isAdmin = typeof window !== 'undefined' && localStorage.getItem('admin_token') === 'admin_authenticated';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
