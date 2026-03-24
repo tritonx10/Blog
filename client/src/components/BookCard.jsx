@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { BookOpen, ExternalLink } from 'lucide-react';
+import { Feather, ExternalLink } from 'lucide-react';
 
 export default function BookCard({ book }) {
   return (
@@ -14,7 +14,7 @@ export default function BookCard({ book }) {
           />
         ) : (
           <div className="w-full h-full flex flex-col items-center justify-center gap-3 bg-gradient-to-br from-brown/10 to-gold/10">
-            <BookOpen size={40} className="text-gold/50" />
+            <Feather size={40} className="text-gold/50" />
             <span className="font-heading text-sm text-brown-lighter px-4 text-center">{book.title}</span>
           </div>
         )}

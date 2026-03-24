@@ -5,7 +5,7 @@ import { getPosts, getBooks } from '../lib/api';
 import PostCard from '../components/PostCard';
 import BookCard from '../components/BookCard';
 import { GridSkeleton, Spinner } from '../components/Loader';
-import { ArrowRight, Feather, BookOpen } from 'lucide-react';
+import { ArrowRight, Feather } from 'lucide-react';
 
 const fadeUp = {
   initial: { opacity: 0, y: 24 },
@@ -159,7 +159,7 @@ export default function Home() {
         {loadingBooks ? (
           <GridSkeleton count={3} />
         ) : featuredBooks.length === 0 ? (
-          <EmptyState icon={<BookOpen size={32} className="text-gold/40" />} message="No books yet — coming soon!" />
+          <EmptyState icon={<Feather size={32} className="text-gold/40" />} message="No books yet — coming soon!" />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {featuredBooks.map((book, i) => (

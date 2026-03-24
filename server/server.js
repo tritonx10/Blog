@@ -39,8 +39,11 @@ app.post('/api/ocr', async (req, res) => {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) return res.status(500).json({ error: 'GEMINI_API_KEY not configured on server' });
 
+    console.log('--- OCR REQUEST START ---');
+    console.log('Using Gemini API key ending in:', apiKey.slice(-4));
+    console.log('Target model: gemini-flash-latest');
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-flash-latest' });
 
     const result = await model.generateContent([
       {
@@ -65,13 +68,16 @@ OUTPUT only the transcribed text, nothing else.`,
   }
 });
 
-// Health check
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', message: 'Suhani\'s Literary API is running 🕯️ (File Storage Mode)' });
+  res.json({
+    status: 'ok',
+    version: '2.0.1-flashfix',
+    message: 'Suhani\'s Literary API is running 🕯️ (File Storage Mode)'
+  });
 });
 
 // Start server
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5005;
 app.listen(PORT, () => {
   console.log(`🕯️ Server running on http://localhost:${PORT}`);
   console.log('📦 Data storage: Local JSON files (server/data/)');

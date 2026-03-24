@@ -1,12 +1,12 @@
 import { Link } from 'react-router-dom';
-import { BookOpen, Heart } from 'lucide-react';
+import { Heart } from 'lucide-react';
 
 export default function Footer() {
   return (
     <footer className="mt-auto border-t border-parchment-dark bg-parchment-dark/50">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 flex flex-col md:flex-row items-center justify-between gap-6">
         <div className="flex items-center gap-2.5">
-          <BookOpen size={20} className="text-gold" />
+          <img src="/favicon.svg" alt="Logo" className="w-5 h-5 object-contain" />
           <span className="font-heading text-lg font-semibold text-ink">Suhani Gupta</span>
         </div>
 

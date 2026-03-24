@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Lock, LayoutDashboard, FileText, BookOpen, Plus, 
+  Lock, LayoutDashboard, FileText, Feather, Plus, 
   Trash2, Edit3, Save, X, Eye, EyeOff, LogOut, Check, AlertCircle 
 } from 'lucide-react';
 import { 
@@ -16,7 +16,7 @@ import { Spinner } from '../components/Loader';
 const TABS = [
   { id: 'posts', label: 'Blog Posts', icon: <FileText size={18} /> },
   { id: 'articles', label: 'Articles', icon: <FileText size={18} className="text-sage-dark" /> },
-  { id: 'books', label: 'Books', icon: <BookOpen size={18} className="text-gold" /> },
+  { id: 'books', label: 'Books', icon: <Feather size={18} className="text-gold" /> },
 ];
 
 export default function Admin() {

@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { getBookBySlug, addBookComment, deleteBookComment } from '../lib/api';
 import { Spinner } from '../components/Loader';
 import CommentSection from '../components/CommentSection';
-import { ArrowLeft, BookOpen, Share2, Check, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Feather, Share2, Check, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
 
 export default function BookDetail() {
   const { slug } = useParams();
@@ -86,7 +86,7 @@ export default function BookDetail() {
               <img src={book.coverImage} alt={book.title} className="w-full h-full object-cover" />
             ) : (
               <div className="w-full h-full flex items-center justify-center flex-col gap-3 bg-gradient-to-br from-brown/10 to-gold/10">
-                <BookOpen size={40} className="text-gold/50" />
+                <Feather size={40} className="text-gold/50" />
                 <span className="font-heading text-sm text-brown-lighter text-center px-4">{book.title}</span>
               </div>
             )}
