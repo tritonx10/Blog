@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { getBooks } from '../lib/api';
 import BookCard from '../components/BookCard';
 import { GridSkeleton } from '../components/Loader';
-import { Feather } from 'lucide-react';
+import { BookOpen } from 'lucide-react';
 
 export default function Books() {
   const [books, setBooks] = useState([]);
@@ -32,7 +32,7 @@ export default function Books() {
       >
         <div className="flex justify-center mb-4">
           <div className="w-10 h-10 rounded-full bg-brown/10 flex items-center justify-center">
-            <Feather size={18} className="text-brown-light" />
+            <BookOpen size={18} className="text-brown-light" />
           </div>
         </div>
         <h1 className="font-heading text-5xl text-ink mb-3">Books & Writings</h1>

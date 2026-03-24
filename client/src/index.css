@@ -84,16 +84,6 @@
   .prose-literary blockquote {
     @apply border-l-4 border-gold pl-5 italic text-brown-lighter my-6;
   }
-
-  /* Tiptap Editor Fixes */
-  .ProseMirror {
-    @apply min-h-[300px] outline-none h-full;
-  }
-
-  .ProseMirror p.is-editor-empty:first-child::before {
-    @apply text-brown-lighter/50 float-left h-0 pointer-events-none;
-    content: attr(data-placeholder);
-  }
 }
 
 /* Custom scrollbar */

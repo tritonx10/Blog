@@ -5,7 +5,7 @@ import { getPosts, getBooks } from '../lib/api';
 import PostCard from '../components/PostCard';
 import BookCard from '../components/BookCard';
 import { GridSkeleton, Spinner } from '../components/Loader';
-import { ArrowRight, Feather } from 'lucide-react';
+import { ArrowRight, Feather, BookOpen } from 'lucide-react';
 
 const fadeUp = {
   initial: { opacity: 0, y: 24 },
@@ -43,9 +43,9 @@ export default function Home() {
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.5 }}
-            className="flex items-center justify-center mb-2"
+            className="w-14 h-14 rounded-full bg-gold/15 flex items-center justify-center"
           >
-            <img src="/scroll-logo.png" alt="Logo" className="w-auto h-24 sm:h-32 object-contain" />
+            <Feather size={26} className="text-gold" />
           </motion.div>
 
           <motion.h1
@@ -159,7 +159,7 @@ export default function Home() {
         {loadingBooks ? (
           <GridSkeleton count={3} />
         ) : featuredBooks.length === 0 ? (
-          <EmptyState icon={<Feather size={32} className="text-gold/40" />} message="No books yet — coming soon!" />
+          <EmptyState icon={<BookOpen size={32} className="text-gold/40" />} message="No books yet — coming soon!" />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {featuredBooks.map((book, i) => (
