@@ -43,9 +43,9 @@ export default function Home() {
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.5 }}
-            className="w-14 h-14 rounded-full bg-gold/15 flex items-center justify-center"
+            className="w-24 h-24 flex items-center justify-center pt-2"
           >
-            <Feather size={26} className="text-gold" />
+            <img src="/scroll-logo.png" alt="Scroll Logo" className="w-full h-full object-contain rounded-full shadow-sm" />
           </motion.div>
 
           <motion.h1
