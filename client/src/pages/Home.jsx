@@ -43,9 +43,9 @@ export default function Home() {
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.5 }}
-            className="w-28 h-28 flex items-center justify-center pt-2"
+            className="flex items-center justify-center mb-2"
           >
-            <img src="/scroll-logo.png" alt="Scroll Logo" className="w-full h-full object-cover rounded-full shadow-md" />
+            <img src="/scroll-logo.png" alt="Logo" className="w-auto h-24 sm:h-32 object-contain" />
           </motion.div>
 
           <motion.h1
