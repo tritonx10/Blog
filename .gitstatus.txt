@@ -1,8 +1,0 @@
-﻿ M client/index.html
- M client/src/components/Footer.jsx
- M client/src/components/Navbar.jsx
- M client/src/pages/Home.jsx
-?? .gitlog.txt
-?? .gitlog_dates.txt
-?? .gitstatus.txt
-?? client/public/logo.svg

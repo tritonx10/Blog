@@ -1,5 +1,0 @@
-﻿2041348 Remove crop from scrollwise logo and use original ratio
-a2ad58f Add and scale high-quality feather logo and favicon
-f1b7391 Update scrollwise logo on Home to scroll-logo.png
-3f6e58b Revert logo to BookOpen icon
-50e59f4 Accurately replace old branding assets with new ones
