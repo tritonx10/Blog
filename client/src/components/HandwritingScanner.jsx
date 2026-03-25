@@ -97,60 +97,23 @@ export default function HandwritingScanner({ onInsert, onClose }) {
     reader.readAsDataURL(file);
   };
 
-  // Call Gemini API directly from browser (with fallback key support)
+  // Call secure backend OCR endpoint (Mistral Pixtral - free tier, key never exposed)
   const runOCR = async () => {
     setStep('scanning');
     setError('');
     try {
-      const keys = [
-        import.meta.env.VITE_GEMINI_API_KEY,
-        import.meta.env.VITE_GEMINI_API_KEY_2,
-      ].filter(Boolean);
-      if (keys.length === 0) throw new Error('No Gemini API key configured.');
-
-      const base64Data = imageSrc.replace(/^data:image\/[a-z]+;base64,/, '');
-
-      const callGemini = (key) =>
-        fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${key}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{
-                parts: [
-                  { inline_data: { mime_type: 'image/jpeg', data: base64Data } },
-                  {
-                    text: `You are an expert handwriting transcription assistant.
-Transcribe EVERY word visible in this handwritten image as accurately as possible.
-Preserve the original paragraph structure — use a blank line between distinct paragraphs.
-DO NOT add any commentary, preamble, or explanation.
-OUTPUT only the transcribed text, nothing else.`,
-                  },
-                ],
-              }],
-            }),
-          }
-        );
-
-      let lastError = null;
-      for (const key of keys) {
-        const res = await callGemini(key);
-        const data = await res.json();
-        if (res.ok) {
-          const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-          if (!text) throw new Error('No text detected in the image.');
-          setOcrText(text);
-          setEditedText(text);
-          setStep('result');
-          return;
-        }
-        const msg = data?.error?.message || 'OCR failed';
-        lastError = msg;
-        // If quota exceeded, try next key; otherwise throw immediately
-        if (!msg.includes('quota') && !msg.includes('429')) throw new Error(msg);
-      }
-      throw new Error(lastError || 'All API keys exceeded quota. Please try again later.');
+      const res = await fetch(`${API_BASE}/ocr`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageData: imageSrc, mimeType: 'image/jpeg' }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || 'OCR failed');
+      const text = data?.text || '';
+      if (!text) throw new Error('No text detected in the image.');
+      setOcrText(text);
+      setEditedText(text);
+      setStep('result');
     } catch (err) {
       setError(err.message || 'OCR failed. Please try again.');
       setStep('preview');
@@ -214,9 +177,8 @@ OUTPUT only the transcribed text, nothing else.`,
           <div className="flex items-center justify-center gap-2">
             {STEPS.map((s, i) => (
               <div key={s} className="flex items-center gap-2">
-                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-sans font-semibold transition-colors ${
-                  stepIdx > i ? 'bg-sage/40 text-sage-dark' : stepIdx === i ? 'bg-gold text-white' : 'bg-parchment-dark text-brown-lighter'
-                }`}>
+                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-sans font-semibold transition-colors ${stepIdx > i ? 'bg-sage/40 text-sage-dark' : stepIdx === i ? 'bg-gold text-white' : 'bg-parchment-dark text-brown-lighter'
+                  }`}>
                   {stepIdx > i ? <Check size={12} /> : i + 1}
                 </div>
                 <span className="text-xs font-sans text-brown-lighter capitalize">{s}</span>
@@ -249,7 +211,7 @@ OUTPUT only the transcribed text, nothing else.`,
                   {/* Corner guides */}
                   <div className="absolute inset-4 border-2 border-gold/50 rounded-xl pointer-events-none">
                     {[['top-0 left-0 border-t-2 border-l-2 rounded-tl-xl'], ['top-0 right-0 border-t-2 border-r-2 rounded-tr-xl'],
-                      ['bottom-0 left-0 border-b-2 border-l-2 rounded-bl-xl'], ['bottom-0 right-0 border-b-2 border-r-2 rounded-br-xl']
+                    ['bottom-0 left-0 border-b-2 border-l-2 rounded-bl-xl'], ['bottom-0 right-0 border-b-2 border-r-2 rounded-br-xl']
                     ].map(([cls], i) => <div key={i} className={`absolute w-6 h-6 border-gold ${cls}`} />)}
                   </div>
                   <p className="absolute bottom-3 left-1/2 -translate-x-1/2 text-white/70 text-xs font-sans bg-black/40 px-3 py-1 rounded-full whitespace-nowrap">
