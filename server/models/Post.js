@@ -10,7 +10,12 @@ const postSchema = new mongoose.Schema({
   coverImage: { type: String, default: '' },
   readTime: { type: Number, default: 5 },
   status: { type: String, enum: ['Draft', 'Published'], default: 'Draft' },
-  createdAt: { type: Date, default: Date.now }
+  createdAt: { type: Date, default: Date.now },
+  comments: [{
+    name: { type: String, default: 'Reader' },
+    text: { type: String, required: true },
+    createdAt: { type: Date, default: Date.now }
+  }]
 });
 
 module.exports = mongoose.model('Post', postSchema);

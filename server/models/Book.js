@@ -17,7 +17,12 @@ const bookSchema = new mongoose.Schema({
   externalLink: { type: String, default: '' },
   status: { type: String, enum: ['Draft', 'Published'], default: 'Draft' },
   featured: { type: Boolean, default: false },
-  createdAt: { type: Date, default: Date.now }
+  createdAt: { type: Date, default: Date.now },
+  comments: [{
+    name: { type: String, default: 'Reader' },
+    text: { type: String, required: true },
+    createdAt: { type: Date, default: Date.now }
+  }]
 });
 
 module.exports = mongoose.model('Book', bookSchema);

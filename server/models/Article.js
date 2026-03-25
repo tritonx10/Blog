@@ -11,7 +11,12 @@ const articleSchema = new mongoose.Schema({
   wordCount: { type: Number, default: 0 },
   readTime: { type: Number, default: 10 },
   status: { type: String, enum: ['Draft', 'Published'], default: 'Draft' },
-  createdAt: { type: Date, default: Date.now }
+  createdAt: { type: Date, default: Date.now },
+  comments: [{
+    name: { type: String, default: 'Reader' },
+    text: { type: String, required: true },
+    createdAt: { type: Date, default: Date.now }
+  }]
 });
 
 module.exports = mongoose.model('Article', articleSchema);
