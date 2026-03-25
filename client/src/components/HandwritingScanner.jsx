@@ -97,20 +97,51 @@ export default function HandwritingScanner({ onInsert, onClose }) {
     reader.readAsDataURL(file);
   };
 
-  // Call backend OCR
+  // Call Gemini API directly from browser
   const runOCR = async () => {
     setStep('scanning');
     setError('');
     try {
-      const res = await fetch(`${API_BASE}/ocr`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageData: imageSrc, mimeType: 'image/jpeg' }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'OCR failed');
-      setOcrText(data.text);
-      setEditedText(data.text);
+      const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+      if (!apiKey) throw new Error('GEMINI_API_KEY not configured. Please add VITE_GEMINI_API_KEY to your environment variables.');
+
+      // Strip the data:image/...;base64, prefix
+      const base64Data = imageSrc.replace(/^data:image\/[a-z]+;base64,/, '');
+
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{
+              parts: [
+                {
+                  inline_data: {
+                    mime_type: 'image/jpeg',
+                    data: base64Data,
+                  },
+                },
+                {
+                  text: `You are an expert handwriting transcription assistant.
+Transcribe EVERY word visible in this handwritten image as accurately as possible.
+Preserve the original paragraph structure — use a blank line between distinct paragraphs or sections.
+DO NOT add any commentary, preamble, or explanation.
+DO NOT include bullet points unless the handwriting itself uses them.
+OUTPUT only the transcribed text, nothing else.`,
+                },
+              ],
+            }],
+          }),
+        }
+      );
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error?.message || 'OCR failed');
+      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      if (!text) throw new Error('No text detected in the image.');
+      setOcrText(text);
+      setEditedText(text);
       setStep('result');
     } catch (err) {
       setError(err.message || 'OCR failed. Please try again.');
