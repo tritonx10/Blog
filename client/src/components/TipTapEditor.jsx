@@ -3,57 +3,43 @@ import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
 import Image from '@tiptap/extension-image';
 import Placeholder from '@tiptap/extension-placeholder';
-import Highlight from '@tiptap/extension-highlight';
-import TextAlign from '@tiptap/extension-text-align';
-import TextStyle from '@tiptap/extension-text-style';
-import Color from '@tiptap/extension-color';
 import Underline from '@tiptap/extension-underline';
-import { Extension } from '@tiptap/core';
-import { 
-  Bold, Italic, Underline as UnderlineIcon, List, ListOrdered, Quote, 
-  Link as LinkIcon, Image as ImageIcon, Heading1, Heading2, ScanLine, 
-  Highlighter, AlignLeft, AlignCenter, AlignRight, AlignJustify 
-} from 'lucide-react';
+import TextAlign from '@tiptap/extension-text-align';
+import Highlight from '@tiptap/extension-highlight';
+import { Extension, Mark } from '@tiptap/core';
+import { Bold, Italic, Underline as UnderlineIcon, List, ListOrdered, Quote, Link as LinkIcon, Image as ImageIcon, Heading1, Heading2, ScanLine, AlignLeft, AlignCenter, AlignRight, AlignJustify, Highlighter } from 'lucide-react';
 import { useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import HandwritingScanner from './HandwritingScanner';
 
-// Custom Font Size Extension
-const FontSize = Extension.create({
+// Custom Font Size Mark (Standalone to avoid TextStyle dependency)
+const FontSize = Mark.create({
   name: 'fontSize',
-  addOptions() {
-    return {
-      types: ['textStyle'],
-    };
-  },
   addAttributes() {
     return {
-      fontSize: {
+      size: {
         default: null,
-        parseHTML: element => element.style.fontSize.replace(/['"]+/g, ''),
+        parseHTML: element => element.style.fontSize,
         renderHTML: attributes => {
-          if (!attributes.fontSize) {
-            return {};
-          }
-          return {
-            style: `font-size: ${attributes.fontSize}`,
-          };
+          if (!attributes.size) return {};
+          return { style: `font-size: ${attributes.size}` };
         },
       },
     };
   },
+  parseHTML() {
+    return [{ tag: 'span[style*="font-size"]' }];
+  },
+  renderHTML({ HTMLAttributes }) {
+    return ['span', HTMLAttributes, 0];
+  },
   addCommands() {
     return {
-      setFontSize: fontSize => ({ chain }) => {
-        return chain()
-          .setMark('textStyle', { fontSize })
-          .run();
+      setFontSize: size => ({ chain }) => {
+        return chain().setMark(this.name, { size }).run();
       },
       unsetFontSize: () => ({ chain }) => {
-        return chain()
-          .setMark('textStyle', { fontSize: null })
-          .removeEmptyTextStyle()
-          .run();
+        return chain().unsetMark(this.name).run();
       },
     };
   },
@@ -67,11 +53,9 @@ export default function TipTapEditor({ content, onChange }) {
       Link.configure({ openOnClick: false }),
       Image,
       Placeholder.configure({ placeholder: 'Start writing...' }),
-      Highlight.configure({ multicolor: true }),
-      TextAlign.configure({ types: ['heading', 'paragraph'] }),
-      TextStyle,
-      Color,
       Underline,
+      TextAlign.configure({ types: ['heading', 'paragraph'] }),
+      Highlight.configure({ multicolor: true }),
       FontSize,
     ],
     content,
@@ -159,7 +143,7 @@ export default function TipTapEditor({ content, onChange }) {
             }}
             className="appearance-none bg-transparent hover:bg-gold/10 text-brown-lighter p-1 px-2 rounded-lg text-sm focus:outline-none cursor-pointer"
             title="Font Size"
-            value={editor.getAttributes('textStyle').fontSize || 'none'}
+            value={editor.getAttributes('fontSize').size || 'none'}
           >
             <option value="none" className="bg-white">Size</option>
             <option value="12px" className="bg-white">12px</option>
@@ -172,17 +156,7 @@ export default function TipTapEditor({ content, onChange }) {
             <option value="36px" className="bg-white">36px</option>
           </select>
         </div>
-
-        <MenuButton
-          onClick={() => editor.chain().focus().toggleHighlight({ color: '#FEF9C3' }).run()}
-          isActive={editor.isActive('highlight')}
-          title="Highlight"
-        >
-          <Highlighter size={18} />
-        </MenuButton>
-
         <div className="w-px h-6 bg-parchment-dark mx-1" />
-        
         <MenuButton
           onClick={() => editor.chain().focus().setTextAlign('left').run()}
           isActive={editor.isActive({ textAlign: 'left' })}
@@ -211,7 +185,13 @@ export default function TipTapEditor({ content, onChange }) {
         >
           <AlignJustify size={18} />
         </MenuButton>
-
+        <MenuButton
+          onClick={() => editor.chain().focus().toggleHighlight({ color: '#FEF9C3' }).run()}
+          isActive={editor.isActive('highlight')}
+          title="Highlight"
+        >
+          <Highlighter size={18} />
+        </MenuButton>
         <div className="w-px h-6 bg-parchment-dark mx-1" />
         <MenuButton
           onClick={() => editor.chain().focus().toggleBulletList().run()}
