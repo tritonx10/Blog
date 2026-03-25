@@ -1,0 +1,14 @@
+﻿On branch main
+Your branch is up to date with 'origin/main'.
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	.gitlog.txt
+	.gitlog_after.txt
+	.gitlog_dates.txt
+	.gitstatus.txt
+	.gitstatus2.txt
+	.gitstatus3.txt
+	client/public/logo.svg
+
+nothing added to commit but untracked files present (use "git add" to track)
