@@ -97,52 +97,60 @@ export default function HandwritingScanner({ onInsert, onClose }) {
     reader.readAsDataURL(file);
   };
 
-  // Call Gemini API directly from browser
+  // Call Gemini API directly from browser (with fallback key support)
   const runOCR = async () => {
     setStep('scanning');
     setError('');
     try {
-      const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-      if (!apiKey) throw new Error('GEMINI_API_KEY not configured. Please add VITE_GEMINI_API_KEY to your environment variables.');
+      const keys = [
+        import.meta.env.VITE_GEMINI_API_KEY,
+        import.meta.env.VITE_GEMINI_API_KEY_2,
+      ].filter(Boolean);
+      if (keys.length === 0) throw new Error('No Gemini API key configured.');
 
-      // Strip the data:image/...;base64, prefix
       const base64Data = imageSrc.replace(/^data:image\/[a-z]+;base64,/, '');
 
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{
-              parts: [
-                {
-                  inline_data: {
-                    mime_type: 'image/jpeg',
-                    data: base64Data,
-                  },
-                },
-                {
-                  text: `You are an expert handwriting transcription assistant.
+      const callGemini = (key) =>
+        fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${key}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{
+                parts: [
+                  { inline_data: { mime_type: 'image/jpeg', data: base64Data } },
+                  {
+                    text: `You are an expert handwriting transcription assistant.
 Transcribe EVERY word visible in this handwritten image as accurately as possible.
-Preserve the original paragraph structure — use a blank line between distinct paragraphs or sections.
+Preserve the original paragraph structure — use a blank line between distinct paragraphs.
 DO NOT add any commentary, preamble, or explanation.
-DO NOT include bullet points unless the handwriting itself uses them.
 OUTPUT only the transcribed text, nothing else.`,
-                },
-              ],
-            }],
-          }),
-        }
-      );
+                  },
+                ],
+              }],
+            }),
+          }
+        );
 
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error?.message || 'OCR failed');
-      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-      if (!text) throw new Error('No text detected in the image.');
-      setOcrText(text);
-      setEditedText(text);
-      setStep('result');
+      let lastError = null;
+      for (const key of keys) {
+        const res = await callGemini(key);
+        const data = await res.json();
+        if (res.ok) {
+          const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+          if (!text) throw new Error('No text detected in the image.');
+          setOcrText(text);
+          setEditedText(text);
+          setStep('result');
+          return;
+        }
+        const msg = data?.error?.message || 'OCR failed';
+        lastError = msg;
+        // If quota exceeded, try next key; otherwise throw immediately
+        if (!msg.includes('quota') && !msg.includes('429')) throw new Error(msg);
+      }
+      throw new Error(lastError || 'All API keys exceeded quota. Please try again later.');
     } catch (err) {
       setError(err.message || 'OCR failed. Please try again.');
       setStep('preview');
