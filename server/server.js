@@ -31,6 +31,7 @@ async function connectToDatabase() {
       maxPoolSize: 10,
       minPoolSize: 1,
       bufferCommands: true,
+      bufferTimeoutMS: 30000, // Increase buffer timeout to 30s
     };
 
     cached.promise = mongoose.connect(mongoURI, opts).then((m) => {
