@@ -26,19 +26,21 @@ async function connectToDatabase() {
 
   if (!cached.promise) {
     const opts = {
-      serverSelectionTimeoutMS: 30000,
+      serverSelectionTimeoutMS: 15000,
       socketTimeoutMS: 45000,
+      connectTimeoutMS: 15000,
       maxPoolSize: 10,
       minPoolSize: 1,
       bufferCommands: true,
-      bufferTimeoutMS: 30000, // Increase buffer timeout to 30s
+      bufferTimeoutMS: 30000,
     };
 
+    console.log('🔄 Attempting MongoDB connection...');
     cached.promise = mongoose.connect(mongoURI, opts).then((m) => {
       console.log('🍃 Connected to MongoDB Atlas');
       return m;
     }).catch((err) => {
-      console.error('❌ MongoDB connection error:', err);
+      console.error('❌ MongoDB connection error:', err.message);
       cached.promise = null;
       throw err;
     });
