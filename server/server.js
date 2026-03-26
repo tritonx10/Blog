@@ -15,36 +15,39 @@ app.use(express.urlencoded({ extended: true }));
 
 // MongoDB Connection (Cached for Serverless)
 const mongoURI = process.env.MONGO_URI || 'mongodb://localhost:27017/suhani_literary';
-let cachedPromise = null;
+
+let cached = global.mongoose;
+if (!cached) {
+  cached = global.mongoose = { conn: null, promise: null };
+}
 
 async function connectToDatabase() {
-  if (mongoose.connection.readyState === 1) {
-    return mongoose.connection;
-  }
+  if (cached.conn) return cached.conn;
 
-  if (!cachedPromise) {
+  if (!cached.promise) {
     const opts = {
-      serverSelectionTimeoutMS: 30000, // 30 seconds
+      serverSelectionTimeoutMS: 30000,
       socketTimeoutMS: 45000,
       maxPoolSize: 10,
       minPoolSize: 1,
       bufferCommands: true,
     };
 
-    cachedPromise = mongoose.connect(mongoURI, opts).then((m) => {
+    cached.promise = mongoose.connect(mongoURI, opts).then((m) => {
       console.log('🍃 Connected to MongoDB Atlas');
       return m;
     }).catch((err) => {
       console.error('❌ MongoDB connection error:', err);
-      cachedPromise = null;
+      cached.promise = null;
       throw err;
     });
   }
 
   try {
-    return await cachedPromise;
+    cached.conn = await cached.promise;
+    return cached.conn;
   } catch (err) {
-    cachedPromise = null;
+    cached.promise = null;
     return null;
   }
 }
