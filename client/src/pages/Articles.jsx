@@ -12,21 +12,30 @@ export default function Articles() {
   const [loading, setLoading] = useState(true);
   const [category, setCategory] = useState('All');
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+
+  // Search debounce
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search.trim());
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   useEffect(() => {
     setLoading(true);
     const params = { status: 'Published', page, limit: 9 };
     if (category !== 'All') params.category = category;
-    if (search.trim()) params.search = search.trim();
+    if (debouncedSearch) params.search = debouncedSearch;
     getArticles(params)
       .then((res) => {
         setArticles(res.data.articles);
         setTotalPages(res.data.pages);
       })
       .finally(() => setLoading(false));
-  }, [category, search, page]);
+  }, [category, debouncedSearch, page]);
 
   function handleCategory(c) {
     setCategory(c);

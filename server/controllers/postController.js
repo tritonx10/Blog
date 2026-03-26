@@ -16,6 +16,7 @@ exports.getAllPosts = async (req, res) => {
     }
 
     const posts = await Post.find(query)
+      .select('-body -comments')
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(parseInt(limit));

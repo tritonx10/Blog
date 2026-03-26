@@ -16,6 +16,7 @@ exports.getAllArticles = async (req, res) => {
     }
 
     const articles = await Article.find(query)
+      .select('-body -comments')
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(parseInt(limit));

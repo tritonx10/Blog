@@ -14,25 +14,35 @@ app.use(express.urlencoded({ extended: true }));
 
 // MongoDB Connection (Cached for Serverless)
 const mongoURI = process.env.MONGO_URI || 'mongodb://localhost:27017/suhani_literary';
-let cachedConnection = null;
 
 async function connectToDatabase() {
-  if (cachedConnection) return cachedConnection;
+  if (mongoose.connection.readyState === 1) return mongoose.connection;
+  
   try {
-    const conn = await mongoose.connect(mongoURI);
-    cachedConnection = conn;
+    const conn = await mongoose.connect(mongoURI, {
+      serverSelectionTimeoutMS: 15000, 
+      socketTimeoutMS: 45000,
+      bufferCommands: true,
+    });
     console.log('🍃 Connected to MongoDB Atlas');
     return conn;
   } catch (err) {
     console.error('❌ MongoDB connection error:', err);
-    throw err;
+    // Don't throw here, middleware will handle it
+    return null;
   }
 }
+
+// Eagerly connect at module startup
+connectToDatabase();
 
 // Ensure connection before any request
 app.use(async (req, res, next) => {
   try {
-    await connectToDatabase();
+    const conn = await connectToDatabase();
+    if (!conn || mongoose.connection.readyState !== 1) {
+       return res.status(503).json({ error: 'Database connection still warming up. Please refresh in a moment.' });
+    }
     next();
   } catch (err) {
     res.status(500).json({ error: 'Database connection failed' });

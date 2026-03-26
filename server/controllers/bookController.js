@@ -16,6 +16,7 @@ exports.getAllBooks = async (req, res) => {
     }
 
     const books = await Book.find(query)
+      .select('-chapters -comments')
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(parseInt(limit));
