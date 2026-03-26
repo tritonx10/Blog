@@ -14,15 +14,8 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 // MongoDB Connection (Cached for Serverless)
-// Note: Ensure MONGO_URI is set in your Vercel Environment Variables.
-// If it times out, please verify your MongoDB Atlas IP Whitelist (allow 0.0.0.0/0).
-const mongoURI = process.env.MONGO_URI;
-
-if (!mongoURI) {
-  console.warn('⚠️ MONGO_URI is not defined. Defaulting to localhost for development.');
-}
-
-const finalURI = mongoURI || 'mongodb://localhost:27017/suhani_literary';
+const mongoURI = process.env.MONGO_URI || 'mongodb://localhost:27017/suhani_literary';
+const finalURI = mongoURI;
 
 let cached = global.mongoose;
 if (!cached) {
