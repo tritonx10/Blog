@@ -14,21 +14,34 @@ app.use(express.urlencoded({ extended: true }));
 
 // MongoDB Connection (Cached for Serverless)
 const mongoURI = process.env.MONGO_URI || 'mongodb://localhost:27017/suhani_literary';
+let cachedPromise = null;
 
 async function connectToDatabase() {
-  if (mongoose.connection.readyState === 1) return mongoose.connection;
-  
-  try {
-    const conn = await mongoose.connect(mongoURI, {
-      serverSelectionTimeoutMS: 15000, 
+  if (mongoose.connection.readyState === 1) {
+    return mongoose.connection;
+  }
+
+  if (!cachedPromise) {
+    const opts = {
+      serverSelectionTimeoutMS: 15000,
       socketTimeoutMS: 45000,
       bufferCommands: true,
+    };
+
+    cachedPromise = mongoose.connect(mongoURI, opts).then((m) => {
+      console.log('🍃 Connected to MongoDB Atlas');
+      return m;
+    }).catch((err) => {
+      console.error('❌ MongoDB connection error:', err);
+      cachedPromise = null;
+      throw err;
     });
-    console.log('🍃 Connected to MongoDB Atlas');
-    return conn;
+  }
+
+  try {
+    return await cachedPromise;
   } catch (err) {
-    console.error('❌ MongoDB connection error:', err);
-    // Don't throw here, middleware will handle it
+    cachedPromise = null;
     return null;
   }
 }
