@@ -14,7 +14,7 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 // MongoDB Connection (Cached for Serverless)
-const ATLAS_URI = 'mongodb+srv://suhanig724:AKwncHHOSxtsaph0@cluster0.cYpLRu4.mongodb.net/suhani_literary?retryWrites=true&w=majority';
+const ATLAS_URI = 'mongodb+srv://suhanig724:AKwncHHOSxtsaph0cYpLRu4i0@cluster0.cYpLRu4.mongodb.net/suhani_literary?retryWrites=true&w=majority';
 const mongoURI = process.env.MONGO_URI || ATLAS_URI;
 
 let cached = global.mongoose;
