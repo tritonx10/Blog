@@ -334,10 +334,11 @@ export default function Admin() {
                           <label className="form-label">Excerpt (Summary)</label>
                           <textarea
                             rows={3}
+                            required={activeTab !== 'books'}
                             value={editingItem.excerpt}
                             onChange={(e) => setEditingItem({ ...editingItem, excerpt: e.target.value })}
                             className="form-input"
-                            placeholder="A brief taste of the journey..."
+                            placeholder="A brief taste (auto-generated if left blank)..."
                           />
                         </div>
                       ) : (
@@ -346,6 +347,7 @@ export default function Admin() {
                           <textarea
                             rows={3}
                             value={editingItem.synopsis}
+                            required={activeTab === 'books'}
                             onChange={(e) => setEditingItem({ ...editingItem, synopsis: e.target.value })}
                             className="form-input"
                             placeholder="The complete arc of the story..."

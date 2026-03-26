@@ -49,11 +49,19 @@ exports.createArticle = async (req, res) => {
     const { title, excerpt, body, category, tags, coverImage, readTime, status } = req.body;
     const slug = slugify(title, { lower: true, strict: true });
     
-    // Simple word count calculation from HTML
-    const wordCount = body ? body.replace(/<[^>]*>/g, '').split(/\s+/).length : 0;
-    
+    // Auto-generate excerpt if missing
+    let finalExcerpt = excerpt;
+    if (!finalExcerpt && body) {
+      finalExcerpt = body.replace(/<[^>]*>/g, '').split(/\s+/).slice(0, 25).join(' ') + '...';
+    }
+
+    // Auto-calculate readTime & wordCount
+    const cleanText = body ? body.replace(/<[^>]*>/g, '') : '';
+    const wordCount = cleanText ? cleanText.split(/\s+/).length : 0;
+    const finalReadTime = readTime || Math.max(1, Math.ceil(wordCount / 200));
+
     const article = await Article.create({ 
-      title, slug, excerpt, body, category, tags, coverImage, readTime, wordCount, status 
+      title, slug, excerpt: finalExcerpt || 'A new exploration...', body, category, tags, coverImage, readTime: finalReadTime, wordCount, status 
     });
     res.status(201).json(article);
   } catch (err) {
@@ -63,16 +71,27 @@ exports.createArticle = async (req, res) => {
 
 exports.updateArticle = async (req, res) => {
   try {
-    const { title, body, ...rest } = req.body;
+    const { title, body, excerpt, ...rest } = req.body;
     const updateData = { ...rest };
+    
     if (title) {
       updateData.title = title;
       updateData.slug = slugify(title, { lower: true, strict: true });
     }
+    
     if (body) {
       updateData.body = body;
-      updateData.wordCount = body.replace(/<[^>]*>/g, '').split(/\s+/).length;
+      const cleanText = body.replace(/<[^>]*>/g, '');
+      const wordCount = cleanText.split(/\s+/).length;
+      updateData.wordCount = wordCount;
+      updateData.readTime = Math.max(1, Math.ceil(wordCount / 200));
+      
+      if (!excerpt && !rest.excerpt) {
+        updateData.excerpt = cleanText.split(/\s+/).slice(0, 25).join(' ') + '...';
+      }
     }
+
+    if (excerpt) updateData.excerpt = excerpt;
     
     const updated = await Article.findByIdAndUpdate(
       req.params.id, 

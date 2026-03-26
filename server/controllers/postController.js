@@ -49,8 +49,21 @@ exports.createPost = async (req, res) => {
     const { title, excerpt, body, category, tags, coverImage, readTime, status } = req.body;
     const slug = slugify(title, { lower: true, strict: true });
     
+    // Auto-generate excerpt if missing
+    let finalExcerpt = excerpt;
+    if (!finalExcerpt && body) {
+      finalExcerpt = body.replace(/<[^>]*>/g, '').split(/\s+/).slice(0, 25).join(' ') + '...';
+    }
+
+    // Auto-calculate readTime if missing
+    let finalReadTime = readTime;
+    if (!finalReadTime && body) {
+      const words = body.replace(/<[^>]*>/g, '').split(/\s+/).length;
+      finalReadTime = Math.max(1, Math.ceil(words / 200));
+    }
+
     const post = await Post.create({ 
-      title, slug, excerpt, body, category, tags, coverImage, readTime, status 
+      title, slug, excerpt: finalExcerpt || 'A new story...', body, category, tags, coverImage, readTime: finalReadTime || 5, status 
     });
     res.status(201).json(post);
   } catch (err) {
@@ -60,12 +73,27 @@ exports.createPost = async (req, res) => {
 
 exports.updatePost = async (req, res) => {
   try {
-    const { title, ...rest } = req.body;
+    const { title, body, excerpt, ...rest } = req.body;
     const updateData = { ...rest };
+    
     if (title) {
       updateData.title = title;
       updateData.slug = slugify(title, { lower: true, strict: true });
     }
+
+    if (body) {
+      updateData.body = body;
+      // Auto-calculate readTime
+      const words = body.replace(/<[^>]*>/g, '').split(/\s+/).length;
+      updateData.readTime = Math.max(1, Math.ceil(words / 200));
+      
+      // Auto-generate excerpt if still empty
+      if (!excerpt && !rest.excerpt) {
+        updateData.excerpt = body.replace(/<[^>]*>/g, '').split(/\s+/).slice(0, 25).join(' ') + '...';
+      }
+    }
+    
+    if (excerpt) updateData.excerpt = excerpt;
     
     const updated = await Post.findByIdAndUpdate(
       req.params.id, 
