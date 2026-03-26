@@ -19,4 +19,8 @@ const articleSchema = new mongoose.Schema({
   }]
 });
 
+articleSchema.index({ status: 1, createdAt: -1 });
+articleSchema.index({ category: 1, status: 1 });
+articleSchema.index({ createdAt: -1 });
+
 module.exports = mongoose.model('Article', articleSchema);

@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
+const rateLimit = require('express-rate-limit');
 const app = express();
 
 // Middleware
@@ -23,8 +24,10 @@ async function connectToDatabase() {
 
   if (!cachedPromise) {
     const opts = {
-      serverSelectionTimeoutMS: 15000,
+      serverSelectionTimeoutMS: 30000, // 30 seconds
       socketTimeoutMS: 45000,
+      maxPoolSize: 10,
+      minPoolSize: 1,
       bufferCommands: true,
     };
 
@@ -52,14 +55,26 @@ connectToDatabase();
 // Ensure connection before any request
 app.use(async (req, res, next) => {
   try {
-    const conn = await connectToDatabase();
-    if (!conn || mongoose.connection.readyState !== 1) {
-       return res.status(503).json({ error: 'Database connection still warming up. Please refresh in a moment.' });
-    }
+    await connectToDatabase();
+    // No more strict 503 error - let Mongoose internal buffer handle it
     next();
   } catch (err) {
+    console.error('Database connection middleware error:', err);
     res.status(500).json({ error: 'Database connection failed' });
   }
+});
+
+// Rate Limiting
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // 10 attempts
+  message: { error: 'Too many login attempts, please try again after 15 minutes' }
+});
+
+const ocrLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 50, // 50 requests per hour
+  message: { error: 'OCR quota reached, please try again later' }
 });
 
 // Routes
@@ -68,7 +83,7 @@ app.use('/api/articles', require('./routes/articles'));
 app.use('/api/books', require('./routes/books'));
 
 // Admin auth endpoint
-app.post('/api/admin/login', (req, res) => {
+app.post('/api/admin/login', authLimiter, (req, res) => {
   const { email, password } = req.body;
   const adminEmail = process.env.ADMIN_EMAIL?.trim() || 'suhanig724@gmail.com';
   const adminPassword = process.env.ADMIN_PASSWORD?.trim() || 'Suhani_Kuchupuchu';
@@ -81,7 +96,7 @@ app.post('/api/admin/login', (req, res) => {
 });
 
 // OCR endpoint using Mistral Pixtral Vision (free tier, key stays server-side)
-app.post('/api/ocr', async (req, res) => {
+app.post('/api/ocr', ocrLimiter, async (req, res) => {
   try {
     const { imageData, mimeType = 'image/jpeg' } = req.body;
     if (!imageData) return res.status(400).json({ error: 'No image data provided' });
