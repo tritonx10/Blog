@@ -13,17 +13,9 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// Temporary Debug Endpoint
-app.get('/api/debug-env', (req, res) => {
-  res.json({
-    has_mongo_uri: !!process.env.MONGO_URI,
-    is_localhost: (process.env.MONGO_URI || '').includes('localhost'),
-    mongo_uri_prefix: process.env.MONGO_URI ? process.env.MONGO_URI.substring(0, 15) : 'none'
-  });
-});
-
 // MongoDB Connection (Cached for Serverless)
-const mongoURI = process.env.MONGO_URI || 'mongodb://localhost:27017/suhani_literary';
+const ATLAS_URI = 'mongodb+srv://suhanig724:AKwncHHOSxtsaph0@cluster0.cYpLRu4.mongodb.net/suhani_literary?retryWrites=true&w=majority';
+const mongoURI = process.env.MONGO_URI || ATLAS_URI;
 
 let cached = global.mongoose;
 if (!cached) {
