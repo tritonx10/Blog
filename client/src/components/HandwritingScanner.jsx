@@ -160,7 +160,7 @@ export default function HandwritingScanner({ onInsert, onClose }) {
               <p className="text-xs font-sans text-brown-lighter">
                 {step === 'capture' && 'Align your handwritten notes in the frame.'}
                 {step === 'preview' && 'Review image before AI scanning.'}
-                {step === 'scanning' && 'Gemini AI is reading your handwriting…'}
+                {step === 'scanning' && 'AI is reading your handwriting…'}
                 {step === 'result' && 'Review & edit the text, then insert.'}
               </p>
             </div>
@@ -259,7 +259,7 @@ export default function HandwritingScanner({ onInsert, onClose }) {
 
               <div className="flex gap-3">
                 <button onClick={reset} className="flex-1 btn-outline flex items-center justify-center gap-2 py-3"><RefreshCw size={15} /> Retake</button>
-                <button onClick={runOCR} className="flex-1 btn-gold flex items-center justify-center gap-2 py-3"><Scan size={18} /> Scan with Gemini AI</button>
+                <button onClick={runOCR} className="flex-1 btn-gold flex items-center justify-center gap-2 py-3"><Scan size={18} /> Scan with AI</button>
               </div>
             </div>
           )}
@@ -272,7 +272,7 @@ export default function HandwritingScanner({ onInsert, onClose }) {
               </div>
               <div className="text-center">
                 <p className="font-heading text-xl text-ink mb-1">Reading your handwriting{dots}</p>
-                <p className="font-body text-brown-lighter text-sm italic">Gemini AI is analysing every word.</p>
+                <p className="font-body text-brown-lighter text-sm italic">The AI is analysing every word.</p>
               </div>
             </div>
           )}

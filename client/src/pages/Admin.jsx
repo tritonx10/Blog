@@ -68,9 +68,9 @@ export default function Admin() {
     setItemsLoading(true);
     try {
       let res;
-      if (activeTab === 'posts') res = await getPosts({ limit: 100 });
-      else if (activeTab === 'articles') res = await getArticles({ limit: 100 });
-      else if (activeTab === 'books') res = await getBooks({ limit: 100 });
+      if (activeTab === 'posts') res = await getPosts({ limit: 20 });
+      else if (activeTab === 'articles') res = await getArticles({ limit: 20 });
+      else if (activeTab === 'books') res = await getBooks({ limit: 20 });
       
       const data = res.data.posts || res.data.articles || res.data.books || [];
       setItems(data);
@@ -124,12 +124,27 @@ export default function Admin() {
       const isUpdate = !!editingItem._id;
       let res;
       
-      if (activeTab === 'posts') {
-        res = isUpdate ? await updatePost(editingItem._id, editingItem) : await createPost(editingItem);
-      } else if (activeTab === 'articles') {
-        res = isUpdate ? await updateArticle(editingItem._id, editingItem) : await createArticle(editingItem);
+      const sanitizedItem = { ...editingItem };
+      // Strip fields that don't belong to the current model
+      if (activeTab === 'posts' || activeTab === 'articles') {
+        delete sanitizedItem.synopsis;
+        delete sanitizedItem.genre;
+        delete sanitizedItem.year;
+        delete sanitizedItem.chapters;
+        delete sanitizedItem.externalLink;
+        delete sanitizedItem.featured;
       } else if (activeTab === 'books') {
-        res = isUpdate ? await updateBook(editingItem._id, editingItem) : await createBook(editingItem);
+        delete sanitizedItem.body;
+        delete sanitizedItem.excerpt;
+        delete sanitizedItem.readTime;
+      }
+
+      if (activeTab === 'posts') {
+        res = isUpdate ? await updatePost(editingItem._id, sanitizedItem) : await createPost(sanitizedItem);
+      } else if (activeTab === 'articles') {
+        res = isUpdate ? await updateArticle(editingItem._id, sanitizedItem) : await createArticle(sanitizedItem);
+      } else if (activeTab === 'books') {
+        res = isUpdate ? await updateBook(editingItem._id, sanitizedItem) : await createBook(sanitizedItem);
       }
 
       setFormMsg({ type: 'success', text: `Successfully ${isUpdate ? 'updated' : 'created'}!` });
@@ -143,7 +158,7 @@ export default function Admin() {
       const apiMsg = err.response?.data?.message;
       setFormMsg({ 
         type: 'error', 
-        text: `${apiMsg || 'Save failed'} ${apiError ? `(${apiError})` : ''}` 
+        text: `${apiMsg || apiError || 'Save failed'}` 
       });
     } finally {
       setLoading(false);
@@ -424,7 +439,7 @@ export default function Admin() {
                           placeholder="https://images.unsplash.com/..."
                         />
                         {editingItem.coverImage && (
-                          <img src={editingItem.coverImage} className="mt-3 w-full h-32 object-cover rounded-lg border border-parchment-dark" alt="Preview" />
+                          <img src={editingItem.coverImage} loading="lazy" className="mt-3 w-full h-32 object-cover rounded-lg border border-parchment-dark" alt="Preview" />
                         )}
                       </div>
 

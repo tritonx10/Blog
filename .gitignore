@@ -18,3 +18,15 @@ client/dist/
 Thumbs.db
 
 .vercel
+.env*.local
+
+# Security & Redundant files
+*.txt
+*.json
+!vercel.json
+!package.json
+!client/package.json
+!server/package.json
+!client/public/*.json
+backup/
+temp/
