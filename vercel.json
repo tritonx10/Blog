@@ -23,8 +23,8 @@
       "destination": "/client/assets/:path*"
     },
     {
-      "source": "/(.*\\.(js|css|png|jpg|jpeg|svg|gif|ico|json|txt))",
-      "destination": "/client/$1"
+      "source": "/(?<file>.*\\.(?:js|css|png|jpg|jpeg|svg|gif|ico|json|txt))",
+      "destination": "/client/:file"
     },
     {
       "source": "/(.*)",
