@@ -148,5 +148,8 @@ class StorageManager {
   }
 }
 
-const storage = new StorageManager(path.join(process.cwd(), 'data'));
+const isVercel = process.env.VERCEL === '1';
+const baseDataDir = isVercel ? path.join('/tmp', 'data') : path.join(process.cwd(), 'data');
+
+const storage = new StorageManager(baseDataDir);
 module.exports = storage;
