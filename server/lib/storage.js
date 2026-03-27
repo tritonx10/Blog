@@ -145,37 +145,52 @@ class Storage {
   // --- SYNC ENGINE ---
   async syncToAtlas(Post, Article, Book) {
     try {
+      // Sync Posts
       const posts = this._getAll('posts');
       for (const p of posts) {
-        const existing = await Post.findOne({ _id: p._id }).catch(() => null);
-        if (!existing) {
-          console.log(`Syncing post: ${p.title}`);
-          await Post.create(p).catch(() => null);
+        try {
+          const existing = await Post.findOne({ _id: p._id });
+          if (!existing) {
+            console.log(`Syncing post: ${p.title}`);
+            await Post.create(p);
+          }
+          this._delete('posts', p._id);
+        } catch (e) {
+          console.error(`Syncing post ${p._id} failed:`, e.message);
         }
-        this._delete('posts', p._id);
       }
 
+      // Sync Articles
       const articles = this._getAll('articles');
       for (const a of articles) {
-        const existing = await Article.findOne({ _id: a._id }).catch(() => null);
-        if (!existing) {
-          console.log(`Syncing article: ${a.title}`);
-          await Article.create(a).catch(() => null);
+        try {
+          const existing = await Article.findOne({ _id: a._id });
+          if (!existing) {
+            console.log(`Syncing article: ${a.title}`);
+            await Article.create(a);
+          }
+          this._delete('articles', a._id);
+        } catch (e) {
+          console.error(`Syncing article ${a._id} failed:`, e.message);
         }
-        this._delete('articles', a._id);
       }
 
+      // Sync Books
       const books = this._getAll('books');
       for (const b of books) {
-        const existing = await Book.findOne({ _id: b._id }).catch(() => null);
-        if (!existing) {
-          console.log(`Syncing book: ${b.title}`);
-          await Book.create(b).catch(() => null);
+        try {
+          const existing = await Book.findOne({ _id: b._id });
+          if (!existing) {
+            console.log(`Syncing book: ${b.title}`);
+            await Book.create(b);
+          }
+          this._delete('books', b._id);
+        } catch (e) {
+          console.error(`Syncing book ${b._id} failed:`, e.message);
         }
-        this._delete('books', b._id);
       }
     } catch (e) {
-      console.error('Sync failed:', e.message);
+      console.error('Master Sync failed:', e.message);
     }
   }
 }
