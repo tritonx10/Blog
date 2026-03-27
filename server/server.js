@@ -51,6 +51,17 @@ async function connectToDatabase() {
       console.log('🍃 Connected to MongoDB Atlas');
       storage.setLocalMode(false);
       lastFailureTime = 0; // Reset on success
+
+      // TRIGGER BACKGROUND SYNC
+      try {
+        const Post = require('./models/Post');
+        const Article = require('./models/Article');
+        const Book = require('./models/Book');
+        storage.syncToAtlas(Post, Article, Book).catch(e => console.error('Background sync failed:', e.message));
+      } catch (e) {
+        console.error('Failed to start sync:', e.message);
+      }
+
       return m;
     }).catch((err) => {
       console.error('❌ Atlas connection failed:', err.message);
