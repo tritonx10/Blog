@@ -40,10 +40,25 @@ class StorageManager {
     return items;
   }
 
+  // Helper to find a specific item by slug
+  async _getBySlug(collection, slug) {
+    const items = await this._readAll(collection);
+    return items.find(i => i.slug === slug);
+  }
+
+  // Helper to find a specific item by id
+  async _getById(collection, id) {
+    try {
+      const content = await fs.readFile(path.join(this.baseDir, collection, `${id}.json`), 'utf8');
+      return JSON.parse(content);
+    } catch {
+      return null;
+    }
+  }
+
   // --- Post Operations ---
   async getPosts(query = {}) {
     let posts = await this._readAll('posts');
-    // Basic filtering
     if (query.category) posts = posts.filter(p => p.category === query.category);
     if (query.status) posts = posts.filter(p => p.status === query.status);
     if (query.search) {
@@ -53,11 +68,16 @@ class StorageManager {
     return posts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   }
 
+  async getPostBySlug(slug) {
+    return this._getBySlug('posts', slug);
+  }
+
   async createPost(data) {
     const id = Date.now().toString();
     const post = { 
       _id: id, 
       ...data, 
+      comments: [],
       createdAt: data.createdAt || new Date().toISOString(),
       slug: data.slug || slugify(data.title, { lower: true, strict: true })
     };
@@ -82,6 +102,23 @@ class StorageManager {
     return { message: 'Deleted' };
   }
 
+  async addComment(collection, id, commentData) {
+    const item = await this._getById(collection, id);
+    if (!item) return null;
+    if (!item.comments) item.comments = [];
+    item.comments.push({ _id: Date.now().toString(), ...commentData, createdAt: new Date().toISOString() });
+    await fs.writeFile(path.join(this.baseDir, collection, `${id}.json`), JSON.stringify(item, null, 2));
+    return item;
+  }
+
+  async deleteComment(collection, id, commentId) {
+    const item = await this._getById(collection, id);
+    if (!item || !item.comments) return item;
+    item.comments = item.comments.filter(c => c._id !== commentId);
+    await fs.writeFile(path.join(this.baseDir, collection, `${id}.json`), JSON.stringify(item, null, 2));
+    return item;
+  }
+
   // --- Article Operations ---
   async getArticles(query = {}) {
     let articles = await this._readAll('articles');
@@ -90,9 +127,13 @@ class StorageManager {
     return articles.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   }
 
+  async getArticleBySlug(slug) {
+    return this._getBySlug('articles', slug);
+  }
+
   async createArticle(data) {
     const id = Date.now().toString();
-    const article = { _id: id, ...data, createdAt: new Date().toISOString() };
+    const article = { _id: id, ...data, comments: [], createdAt: new Date().toISOString() };
     await fs.writeFile(path.join(this.baseDir, 'articles', `${id}.json`), JSON.stringify(article, null, 2));
     return article;
   }

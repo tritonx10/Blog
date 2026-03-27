@@ -41,6 +41,12 @@ exports.getAllPosts = async (req, res) => {
 
 exports.getPostBySlug = async (req, res) => {
   try {
+    if (req.isLocalMode) {
+      const post = await storage.getPostBySlug(req.params.slug);
+      if (!post) return res.status(404).json({ message: 'Post not found' });
+      return res.json(post);
+    }
+
     const post = await Post.findOne({ slug: req.params.slug });
     if (!post) return res.status(404).json({ message: 'Post not found' });
     res.json(post);
@@ -126,6 +132,12 @@ exports.addComment = async (req, res) => {
     const { name, text } = req.body;
     if (!text?.trim()) return res.status(400).json({ message: 'Comment text is required' });
 
+    if (req.isLocalMode) {
+      const updated = await storage.addComment('posts', req.params.id, { name: name?.trim() || 'Reader', text: text.trim() });
+      if (!updated) return res.status(404).json({ message: 'Not found' });
+      return res.json(updated);
+    }
+
     const post = await Post.findById(req.params.id);
     if (!post) return res.status(404).json({ message: 'Not found' });
     
@@ -143,6 +155,12 @@ exports.addComment = async (req, res) => {
 
 exports.deleteComment = async (req, res) => {
   try {
+    if (req.isLocalMode) {
+      const updated = await storage.deleteComment('posts', req.params.id, req.params.commentId);
+      if (!updated) return res.status(404).json({ message: 'Not found' });
+      return res.json(updated);
+    }
+
     const post = await Post.findById(req.params.id);
     if (!post) return res.status(404).json({ message: 'Not found' });
     
