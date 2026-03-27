@@ -16,7 +16,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // MongoDB Connection (Cached for Serverless)
 let lastFailureTime = 0;
-const FAILURE_RETRY_DELAY = 10 * 60 * 1000; // 10 minutes cache
+const FAILURE_RETRY_DELAY = 30 * 1000; // Try again after 30 seconds if it failed
 const mongoURI = process.env.MONGO_URI || 'mongodb+srv://tritonx10:Suhani_Atlas_2026@cluster0.tqfdiey.mongodb.net/suhani_literary?retryWrites=true&w=majority';
 
 let cached = global.mongoose;

@@ -163,28 +163,64 @@ class StorageManager {
     return books.find(b => b.slug === slug);
   }
 
+  async readDir(type) {
+    const dir = path.join(this.baseDir, type);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    try {
+      const files = fs.readdirSync(dir);
+      return files.filter(f => f.endsWith('.json')).map(f => {
+        try {
+          return JSON.parse(fs.readFileSync(path.join(dir, f), 'utf-8'));
+        } catch (e) { return null; }
+      }).filter(Boolean);
+    } catch (e) { return []; }
+  }
+
+  async readById(type, id) {
+    const filePath = path.join(this.baseDir, type, `${id}.json`);
+    const dir = path.dirname(filePath);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    if (!fs.existsSync(filePath)) return null;
+    try {
+      return JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+    } catch (e) { return null; }
+  }
+
+  async saveToFile(type, id, data) {
+    const filePath = path.join(this.baseDir, type, `${id}.json`);
+    const dir = path.dirname(filePath);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+  }
+
   async createBook(data) {
     const id = Date.now().toString();
-    const book = { 
-      _id: id, 
-      ...data, 
+    const book = {
+      _id: id,
+      ...data,
       createdAt: new Date().toISOString(),
       slug: slugify(data.title, { lower: true, strict: true })
     };
-    await fs.writeFile(path.join(this.baseDir, 'books', `${id}.json`), JSON.stringify(book, null, 2));
+    // Use the new saveToFile helper
+    await this.saveToFile('books', id, book);
     return book;
   }
 
   async updateBook(id, data) {
-    const filePath = path.join(this.baseDir, 'books', `${id}.json`);
-    const book = { ...JSON.parse(await fs.readFile(filePath, 'utf8')), ...data };
-    if (data.title) book.slug = slugify(data.title, { lower: true, strict: true });
-    await fs.writeFile(filePath, JSON.stringify(book, null, 2));
-    return book;
+    const book = await this._getById('books', id);
+    if (!book) return null;
+    const updatedBook = { ...book, ...data };
+    if (data.title) updatedBook.slug = slugify(data.title, { lower: true, strict: true });
+    // Use the new saveToFile helper
+    await this.saveToFile('books', id, updatedBook);
+    return updatedBook;
   }
 
   async deleteBook(id) {
-    await fs.unlink(path.join(this.baseDir, 'books', `${id}.json`));
+    // Ensure directory exists before attempting to unlink
+    const dir = path.join(this.baseDir, 'books');
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    await fsPromises.unlink(path.join(dir, `${id}.json`));
     return { message: 'Deleted' };
   }
 }
