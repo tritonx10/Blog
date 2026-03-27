@@ -1,9 +1,21 @@
 const Article = require('../models/Article');
 const slugify = require('slugify');
+const storage = require('../lib/storage');
 
 exports.getAllArticles = async (req, res) => {
   try {
     const { category, status, search, page = 1, limit = 9 } = req.query;
+
+    if (req.isLocalMode) {
+      const articles = await storage.getArticles({ category, status, search });
+      return res.json({ 
+        articles: articles.slice((page - 1) * limit, page * limit), 
+        total: articles.length, 
+        pages: Math.ceil(articles.length / limit), 
+        currentPage: parseInt(page) 
+      });
+    }
+
     const query = {};
     
     if (category) query.category = category;
@@ -47,21 +59,23 @@ exports.getArticleBySlug = async (req, res) => {
 exports.createArticle = async (req, res) => {
   try {
     const { title, excerpt, body, category, tags, coverImage, readTime, status } = req.body;
-    const slug = slugify(title, { lower: true, strict: true });
-    
-    // Auto-generate excerpt if missing
-    let finalExcerpt = excerpt;
-    if (!finalExcerpt && body) {
-      finalExcerpt = body.replace(/<[^>]*>/g, '').split(/\s+/).slice(0, 25).join(' ') + '...';
-    }
 
-    // Auto-calculate readTime & wordCount
+    // Auto-generate excerpt & readTime
     const cleanText = body ? body.replace(/<[^>]*>/g, '') : '';
     const wordCount = cleanText ? cleanText.split(/\s+/).length : 0;
+    let finalExcerpt = excerpt || (cleanText ? cleanText.split(/\s+/).slice(0, 25).join(' ') + '...' : 'A new exploration...');
     const finalReadTime = readTime || Math.max(1, Math.ceil(wordCount / 200));
 
+    if (req.isLocalMode) {
+      const article = await storage.createArticle({ 
+        title, excerpt: finalExcerpt, body, category, tags, coverImage, readTime: finalReadTime, wordCount, status 
+      });
+      return res.status(201).json(article);
+    }
+
+    const slug = slugify(title, { lower: true, strict: true });
     const article = await Article.create({ 
-      title, slug, excerpt: finalExcerpt || 'A new exploration...', body, category, tags, coverImage, readTime: finalReadTime, wordCount, status 
+      title, slug, excerpt: finalExcerpt, body, category, tags, coverImage, readTime: finalReadTime, wordCount, status 
     });
     res.status(201).json(article);
   } catch (err) {
@@ -72,33 +86,30 @@ exports.createArticle = async (req, res) => {
 exports.updateArticle = async (req, res) => {
   try {
     const { title, body, excerpt, ...rest } = req.body;
+
+    if (req.isLocalMode) {
+      const updated = await storage.updateArticle(req.params.id, { title, body, excerpt, ...rest });
+      return res.json(updated);
+    }
+
     const updateData = { ...rest };
-    
     if (title) {
       updateData.title = title;
       updateData.slug = slugify(title, { lower: true, strict: true });
     }
-    
     if (body) {
       updateData.body = body;
       const cleanText = body.replace(/<[^>]*>/g, '');
       const wordCount = cleanText.split(/\s+/).length;
       updateData.wordCount = wordCount;
       updateData.readTime = Math.max(1, Math.ceil(wordCount / 200));
-      
       if (!excerpt && !rest.excerpt) {
         updateData.excerpt = cleanText.split(/\s+/).slice(0, 25).join(' ') + '...';
       }
     }
-
     if (excerpt) updateData.excerpt = excerpt;
     
-    const updated = await Article.findByIdAndUpdate(
-      req.params.id, 
-      updateData, 
-      { new: true, runValidators: true }
-    );
-    
+    const updated = await Article.findByIdAndUpdate(req.params.id, updateData, { new: true, runValidators: true });
     if (!updated) return res.status(404).json({ message: 'Article not found' });
     res.json(updated);
   } catch (err) {
@@ -108,6 +119,10 @@ exports.updateArticle = async (req, res) => {
 
 exports.deleteArticle = async (req, res) => {
   try {
+    if (req.isLocalMode) {
+      await storage.deleteArticle(req.params.id);
+      return res.json({ message: 'Article deleted locally' });
+    }
     const deleted = await Article.findByIdAndDelete(req.params.id);
     if (!deleted) return res.status(404).json({ message: 'Article not found' });
     res.json({ message: 'Article deleted successfully' });

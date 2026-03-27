@@ -1,9 +1,21 @@
 const Book = require('../models/Book');
 const slugify = require('slugify');
+const storage = require('../lib/storage');
 
 exports.getAllBooks = async (req, res) => {
   try {
     const { genre, status, search, page = 1, limit = 8 } = req.query;
+
+    if (req.isLocalMode) {
+      const books = await storage.getBooks({ genre, status, search });
+      return res.json({ 
+        books: books.slice((page - 1) * limit, page * limit), 
+        total: books.length, 
+        pages: Math.ceil(books.length / limit), 
+        currentPage: parseInt(page) 
+      });
+    }
+
     const query = {};
     
     if (genre) query.genre = genre;
@@ -36,6 +48,11 @@ exports.getAllBooks = async (req, res) => {
 
 exports.getBookBySlug = async (req, res) => {
   try {
+    if (req.isLocalMode) {
+      const book = await storage.getBookBySlug(req.params.slug);
+      if (!book) return res.status(404).json({ message: 'Book not found' });
+      return res.json(book);
+    }
     const book = await Book.findOne({ slug: req.params.slug });
     if (!book) return res.status(404).json({ message: 'Book not found' });
     res.json(book);
@@ -57,8 +74,18 @@ exports.getBookChapters = async (req, res) => {
 exports.createBook = async (req, res) => {
   try {
     const { title, synopsis, genre, year, coverImage, status, chapters, featured, externalLink } = req.body;
-    const slug = slugify(title, { lower: true, strict: true });
     
+    if (!title?.trim()) return res.status(400).json({ message: 'Title is required' });
+    if (!synopsis?.trim()) return res.status(400).json({ message: 'Synopsis is required' });
+
+    if (req.isLocalMode) {
+      const book = await storage.createBook({ 
+        title, synopsis, genre, year, coverImage, status, chapters, featured, externalLink 
+      });
+      return res.status(201).json(book);
+    }
+
+    const slug = slugify(title, { lower: true, strict: true });
     const book = await Book.create({ 
       title, slug, synopsis, genre, year, coverImage, status, chapters, featured, externalLink 
     });
@@ -71,18 +98,19 @@ exports.createBook = async (req, res) => {
 exports.updateBook = async (req, res) => {
   try {
     const { title, ...rest } = req.body;
+
+    if (req.isLocalMode) {
+      const updated = await storage.updateBook(req.params.id, { title, ...rest });
+      return res.json(updated);
+    }
+
     const updateData = { ...rest };
     if (title) {
       updateData.title = title;
       updateData.slug = slugify(title, { lower: true, strict: true });
     }
     
-    const updated = await Book.findByIdAndUpdate(
-      req.params.id, 
-      updateData, 
-      { new: true, runValidators: true }
-    );
-    
+    const updated = await Book.findByIdAndUpdate(req.params.id, updateData, { new: true, runValidators: true });
     if (!updated) return res.status(404).json({ message: 'Book not found' });
     res.json(updated);
   } catch (err) {
@@ -92,6 +120,10 @@ exports.updateBook = async (req, res) => {
 
 exports.deleteBook = async (req, res) => {
   try {
+    if (req.isLocalMode) {
+      await storage.deleteBook(req.params.id);
+      return res.json({ message: 'Book deleted locally' });
+    }
     const deleted = await Book.findByIdAndDelete(req.params.id);
     if (!deleted) return res.status(404).json({ message: 'Book not found' });
     res.json({ message: 'Book deleted successfully' });

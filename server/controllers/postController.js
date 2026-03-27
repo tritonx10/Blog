@@ -1,11 +1,22 @@
 const Post = require('../models/Post');
 const slugify = require('slugify');
+const storage = require('../lib/storage');
 
 exports.getAllPosts = async (req, res) => {
   try {
     const { category, status, search, page = 1, limit = 9 } = req.query;
+
+    if (req.isLocalMode) {
+      const posts = await storage.getPosts({ category, status, search });
+      return res.json({ 
+        posts: posts.slice((page - 1) * limit, page * limit), 
+        total: posts.length, 
+        pages: Math.ceil(posts.length / limit), 
+        currentPage: parseInt(page) 
+      });
+    }
+
     const query = {};
-    
     if (category) query.category = category;
     if (status) query.status = status;
     if (search) {
@@ -22,13 +33,7 @@ exports.getAllPosts = async (req, res) => {
       .limit(parseInt(limit));
 
     const total = await Post.countDocuments(query);
-
-    res.json({ 
-      posts, 
-      total, 
-      pages: Math.ceil(total / limit), 
-      currentPage: parseInt(page) 
-    });
+    res.json({ posts, total, pages: Math.ceil(total / limit), currentPage: parseInt(page) });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -47,23 +52,22 @@ exports.getPostBySlug = async (req, res) => {
 exports.createPost = async (req, res) => {
   try {
     const { title, excerpt, body, category, tags, coverImage, readTime, status } = req.body;
-    const slug = slugify(title, { lower: true, strict: true });
     
-    // Auto-generate excerpt if missing
-    let finalExcerpt = excerpt;
-    if (!finalExcerpt && body) {
-      finalExcerpt = body.replace(/<[^>]*>/g, '').split(/\s+/).slice(0, 25).join(' ') + '...';
+    // Auto-generate excerpt & readTime
+    let finalExcerpt = excerpt || (body ? body.replace(/<[^>]*>/g, '').split(/\s+/).slice(0, 25).join(' ') + '...' : 'A new story...');
+    const words = body ? body.replace(/<[^>]*>/g, '').split(/\s+/).length : 0;
+    let finalReadTime = readTime || Math.max(1, Math.ceil(words / 200));
+
+    if (req.isLocalMode) {
+      const post = await storage.createPost({ 
+        title, excerpt: finalExcerpt, body, category, tags, coverImage, readTime: finalReadTime, status 
+      });
+      return res.status(201).json(post);
     }
 
-    // Auto-calculate readTime if missing
-    let finalReadTime = readTime;
-    if (!finalReadTime && body) {
-      const words = body.replace(/<[^>]*>/g, '').split(/\s+/).length;
-      finalReadTime = Math.max(1, Math.ceil(words / 200));
-    }
-
+    const slug = slugify(title, { lower: true, strict: true });
     const post = await Post.create({ 
-      title, slug, excerpt: finalExcerpt || 'A new story...', body, category, tags, coverImage, readTime: finalReadTime || 5, status 
+      title, slug, excerpt: finalExcerpt, body, category, tags, coverImage, readTime: finalReadTime, status 
     });
     res.status(201).json(post);
   } catch (err) {
@@ -74,33 +78,28 @@ exports.createPost = async (req, res) => {
 exports.updatePost = async (req, res) => {
   try {
     const { title, body, excerpt, ...rest } = req.body;
+
+    if (req.isLocalMode) {
+      const updated = await storage.updatePost(req.params.id, { title, body, excerpt, ...rest });
+      return res.json(updated);
+    }
+
     const updateData = { ...rest };
-    
     if (title) {
       updateData.title = title;
       updateData.slug = slugify(title, { lower: true, strict: true });
     }
-
     if (body) {
       updateData.body = body;
-      // Auto-calculate readTime
       const words = body.replace(/<[^>]*>/g, '').split(/\s+/).length;
       updateData.readTime = Math.max(1, Math.ceil(words / 200));
-      
-      // Auto-generate excerpt if still empty
       if (!excerpt && !rest.excerpt) {
         updateData.excerpt = body.replace(/<[^>]*>/g, '').split(/\s+/).slice(0, 25).join(' ') + '...';
       }
     }
-    
     if (excerpt) updateData.excerpt = excerpt;
     
-    const updated = await Post.findByIdAndUpdate(
-      req.params.id, 
-      updateData, 
-      { new: true, runValidators: true }
-    );
-    
+    const updated = await Post.findByIdAndUpdate(req.params.id, updateData, { new: true, runValidators: true });
     if (!updated) return res.status(404).json({ message: 'Post not found' });
     res.json(updated);
   } catch (err) {
@@ -110,6 +109,10 @@ exports.updatePost = async (req, res) => {
 
 exports.deletePost = async (req, res) => {
   try {
+    if (req.isLocalMode) {
+      await storage.deletePost(req.params.id);
+      return res.json({ message: 'Post deleted locally' });
+    }
     const deleted = await Post.findByIdAndDelete(req.params.id);
     if (!deleted) return res.status(404).json({ message: 'Post not found' });
     res.json({ message: 'Post deleted successfully' });

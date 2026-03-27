@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
 const rateLimit = require('express-rate-limit');
+const storage = require('./lib/storage');
 const app = express();
 
 // Middleware
@@ -22,26 +23,29 @@ if (!cached) {
   cached = global.mongoose = { conn: null, promise: null };
 }
 
+// Initialize Storage (Atlas + Local JSON Fallback)
+storage.init();
+
 async function connectToDatabase() {
   if (cached.conn) return cached.conn;
 
   if (!cached.promise) {
     const opts = {
-      serverSelectionTimeoutMS: 15000,
+      serverSelectionTimeoutMS: 5000, // Faster timeout for better hybrid switching
       socketTimeoutMS: 45000,
-      connectTimeoutMS: 15000,
+      connectTimeoutMS: 5000,
       maxPoolSize: 10,
-      minPoolSize: 1,
-      bufferCommands: true,
-      bufferTimeoutMS: 30000,
+      bufferCommands: false, // Don't buffer if we want to fail fast to local
     };
 
-    console.log('🔄 Attempting MongoDB connection...');
+    console.log('🔄 Attempting MongoDB Atlas connection...');
     cached.promise = mongoose.connect(mongoURI, opts).then((m) => {
       console.log('🍃 Connected to MongoDB Atlas');
+      storage.setLocalMode(false);
       return m;
     }).catch((err) => {
-      console.error('❌ MongoDB connection error:', err.message);
+      console.error('❌ Atlas connection failed:', err.message);
+      storage.setLocalMode(true);
       cached.promise = null;
       throw err;
     });
@@ -51,26 +55,20 @@ async function connectToDatabase() {
     cached.conn = await cached.promise;
     return cached.conn;
   } catch (err) {
-    cached.promise = null;
     return null;
   }
 }
 
-// Eagerly connect at module startup
+// Eagerly connect
 connectToDatabase();
 
-// Ensure connection before any request
 app.use(async (req, res, next) => {
-  try {
-    const conn = await connectToDatabase();
-    if (!conn) {
-      return res.status(503).json({ error: 'Database connection currently unavailable. Please try again shortly.' });
-    }
-    next();
-  } catch (err) {
-    console.error('Database connection middleware error:', err);
-    res.status(500).json({ error: 'Database connection failed' });
-  }
+  if (req.path === '/api/admin/login' || req.path === '/api/health') return next();
+
+  const conn = await connectToDatabase();
+  // Attach storage mode to request for controllers
+  req.isLocalMode = !conn;
+  next();
 });
 
 // Rate Limiting
@@ -159,7 +157,11 @@ OUTPUT only the transcribed text, nothing else.`,
 
 // Health check
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', message: 'Suhani\'s Literary API is running 🕯️ (MongoDB Atlas Mode)' });
+  const isLocal = storage.isLocalMode;
+  res.json({ 
+    status: 'ok', 
+    message: `Suhani's Literary API is running 🕯️ (${isLocal ? 'Local Storage Mode' : 'MongoDB Atlas Mode'})` 
+  });
 });
 
 // Start server only if NOT in Vercel environment
