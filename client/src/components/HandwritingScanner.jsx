@@ -165,7 +165,7 @@ export default function HandwritingScanner({ onInsert, onClose }) {
               </p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 text-brown-lighter hover:text-ink rounded-xl hover:bg-parchment-dark transition-colors">
+          <button type="button" onClick={onClose} className="p-2 text-brown-lighter hover:text-ink rounded-xl hover:bg-parchment-dark transition-colors">
             <X size={20} />
           </button>
         </div>
@@ -198,7 +198,7 @@ export default function HandwritingScanner({ onInsert, onClose }) {
             <div className="space-y-4">
               <div className="flex gap-2 justify-center">
                 {['camera', 'upload'].map((m) => (
-                  <button key={m} onClick={() => setCaptureMode(m)}
+                  <button type="button" key={m} onClick={() => setCaptureMode(m)}
                     className={`flex items-center gap-2 px-5 py-2 rounded-full text-sm font-sans font-medium transition-all capitalize ${captureMode === m ? 'bg-ink text-white' : 'bg-parchment-dark text-brown hover:bg-parchment-dark/70'}`}>
                     {m === 'camera' ? <Camera size={15} /> : <Upload size={15} />} {m === 'camera' ? 'Camera' : 'Upload Photo'}
                   </button>
@@ -232,7 +232,7 @@ export default function HandwritingScanner({ onInsert, onClose }) {
               <canvas ref={canvasRef} className="hidden" />
 
               {captureMode === 'camera' && (
-                <button onClick={capturePhoto} className="w-full btn-gold flex items-center justify-center gap-2 py-3">
+                <button type="button" onClick={capturePhoto} className="w-full btn-gold flex items-center justify-center gap-2 py-3">
                   <Camera size={18} /> Capture Photo
                 </button>
               )}
@@ -251,15 +251,15 @@ export default function HandwritingScanner({ onInsert, onClose }) {
               </div>
 
               <div className="flex items-center justify-center gap-3">
-                <button onClick={() => setZoom(z => Math.max(0.5, +(z - 0.25).toFixed(2)))} className="p-2 rounded-lg bg-parchment-dark hover:bg-gold/10 text-brown-lighter hover:text-gold transition-colors"><ZoomOut size={16} /></button>
+                <button type="button" onClick={() => setZoom(z => Math.max(0.5, +(z - 0.25).toFixed(2)))} className="p-2 rounded-lg bg-parchment-dark hover:bg-gold/10 text-brown-lighter hover:text-gold transition-colors"><ZoomOut size={16} /></button>
                 <span className="text-xs font-sans text-brown-lighter w-12 text-center">{Math.round(zoom * 100)}%</span>
-                <button onClick={() => setZoom(z => Math.min(4, +(z + 0.25).toFixed(2)))} className="p-2 rounded-lg bg-parchment-dark hover:bg-gold/10 text-brown-lighter hover:text-gold transition-colors"><ZoomIn size={16} /></button>
-                <button onClick={() => setZoom(1)} className="p-2 rounded-lg bg-parchment-dark hover:bg-gold/10 text-brown-lighter hover:text-gold transition-colors"><RotateCcw size={16} /></button>
+                <button type="button" onClick={() => setZoom(z => Math.min(4, +(z + 0.25).toFixed(2)))} className="p-2 rounded-lg bg-parchment-dark hover:bg-gold/10 text-brown-lighter hover:text-gold transition-colors"><ZoomIn size={16} /></button>
+                <button type="button" onClick={() => setZoom(1)} className="p-2 rounded-lg bg-parchment-dark hover:bg-gold/10 text-brown-lighter hover:text-gold transition-colors"><RotateCcw size={16} /></button>
               </div>
 
               <div className="flex gap-3">
-                <button onClick={reset} className="flex-1 btn-outline flex items-center justify-center gap-2 py-3"><RefreshCw size={15} /> Retake</button>
-                <button onClick={runOCR} className="flex-1 btn-gold flex items-center justify-center gap-2 py-3"><Scan size={18} /> Scan with AI</button>
+                <button type="button" onClick={reset} className="flex-1 btn-outline flex items-center justify-center gap-2 py-3"><RefreshCw size={15} /> Retake</button>
+                <button type="button" onClick={runOCR} className="flex-1 btn-gold flex items-center justify-center gap-2 py-3"><Scan size={18} /> Scan with AI</button>
               </div>
             </div>
           )}
@@ -284,7 +284,7 @@ export default function HandwritingScanner({ onInsert, onClose }) {
                 <p className="text-xs font-sans font-medium text-brown-lighter uppercase tracking-wider">
                   Detected Text — edit freely before inserting
                 </p>
-                <button onClick={reset} className="text-xs text-gold hover:text-gold-dark font-sans flex items-center gap-1">
+                <button type="button" onClick={reset} className="text-xs text-gold hover:text-gold-dark font-sans flex items-center gap-1">
                   <RefreshCw size={12} /> Scan again
                 </button>
               </div>
@@ -328,6 +328,7 @@ export default function HandwritingScanner({ onInsert, onClose }) {
               </div>
 
               <button
+                type="button"
                 onClick={handleInsert}
                 disabled={!editedText.trim()}
                 className="w-full btn-gold flex items-center justify-center gap-2 py-3 text-base disabled:opacity-50"
