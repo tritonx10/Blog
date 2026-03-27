@@ -15,8 +15,9 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 // MongoDB Connection (Cached for Serverless)
+let lastFailureTime = 0;
+const FAILURE_RETRY_DELAY = 10 * 60 * 1000; // 10 minutes cache
 const mongoURI = process.env.MONGO_URI || 'mongodb+srv://tritonx10:Suhani_Atlas_2026@cluster0.tqfdiey.mongodb.net/suhani_literary?retryWrites=true&w=majority';
-const finalURI = mongoURI;
 
 let cached = global.mongoose;
 if (!cached) {
@@ -29,23 +30,32 @@ storage.init();
 async function connectToDatabase() {
   if (cached.conn) return cached.conn;
 
+  // Don't even try if we failed in the last 10 mins to avoid 5s hangs
+  const now = Date.now();
+  if (now - lastFailureTime < FAILURE_RETRY_DELAY) {
+    storage.setLocalMode(true);
+    return null;
+  }
+
   if (!cached.promise) {
     const opts = {
-      serverSelectionTimeoutMS: 5000, // Faster timeout for better hybrid switching
+      serverSelectionTimeoutMS: 5000,
       socketTimeoutMS: 45000,
       connectTimeoutMS: 5000,
       maxPoolSize: 10,
-      bufferCommands: false, // Don't buffer if we want to fail fast to local
+      bufferCommands: false,
     };
 
     console.log('🔄 Attempting MongoDB Atlas connection...');
     cached.promise = mongoose.connect(mongoURI, opts).then((m) => {
       console.log('🍃 Connected to MongoDB Atlas');
       storage.setLocalMode(false);
+      lastFailureTime = 0; // Reset on success
       return m;
     }).catch((err) => {
       console.error('❌ Atlas connection failed:', err.message);
       storage.setLocalMode(true);
+      lastFailureTime = Date.now(); // Record failure time
       cached.promise = null;
       throw err;
     });
