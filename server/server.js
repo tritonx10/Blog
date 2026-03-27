@@ -28,47 +28,41 @@ if (!cached) {
 storage.init();
 
 async function connectToDatabase() {
+  const now = Date.now();
+  if (now - lastFailureTime < FAILURE_RETRY_DELAY) return null;
+
   if (cached.conn) return cached.conn;
 
-  // Don't even try if we failed in the last 10 mins to avoid 5s hangs
-  const now = Date.now();
-  if (now - lastFailureTime < FAILURE_RETRY_DELAY) {
-    storage.setLocalMode(true);
-    return null;
-  }
-
   if (!cached.promise) {
+    console.log('🔗 Connecting to Atlas...');
     const opts = {
-      serverSelectionTimeoutMS: 5000,
+      bufferCommands: true, 
+      serverSelectionTimeoutMS: 10000, // 10s for cold starts
       socketTimeoutMS: 45000,
-      connectTimeoutMS: 5000,
-      maxPoolSize: 10,
-      bufferCommands: false,
+      family: 4,
+      maxPoolSize: 1, // Recommended for Vercel
     };
 
-    console.log('🔄 Attempting MongoDB Atlas connection...');
     cached.promise = mongoose.connect(mongoURI, opts).then((m) => {
       console.log('🍃 Connected to MongoDB Atlas');
       storage.setLocalMode(false);
-      lastFailureTime = 0; // Reset on success
-
-      // TRIGGER BACKGROUND SYNC
+      lastFailureTime = 0;
+      
+      // BACKGROUND SYNC (Quietly)
       try {
         const Post = require('./models/Post');
         const Article = require('./models/Article');
         const Book = require('./models/Book');
-        storage.syncToAtlas(Post, Article, Book).catch(e => console.error('Background sync failed:', e.message));
-      } catch (e) {
-        console.error('Failed to start sync:', e.message);
-      }
+        storage.syncToAtlas(Post, Article, Book).catch(() => null);
+      } catch (e) {}
 
       return m;
     }).catch((err) => {
       console.error('❌ Atlas connection failed:', err.message);
-      storage.setLocalMode(true);
-      lastFailureTime = Date.now(); // Record failure time
+      lastFailureTime = Date.now();
       cached.promise = null;
-      throw err;
+      storage.setLocalMode(true);
+      return null;
     });
   }
 
@@ -76,6 +70,7 @@ async function connectToDatabase() {
     cached.conn = await cached.promise;
     return cached.conn;
   } catch (err) {
+    cached.promise = null;
     return null;
   }
 }
