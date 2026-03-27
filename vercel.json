@@ -19,16 +19,8 @@
       "destination": "/server/server.js"
     },
     {
-      "source": "/assets/:path*",
-      "destination": "/client/assets/:path*"
-    },
-    {
-      "source": "/(?<file>.*\\.(?:js|css|png|jpg|jpeg|svg|gif|ico|json|txt))",
-      "destination": "/client/:file"
-    },
-    {
       "source": "/(.*)",
-      "destination": "/client/index.html"
+      "destination": "/client/$1"
     }
   ]
 }
