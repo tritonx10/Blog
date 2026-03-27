@@ -165,11 +165,11 @@ app.get('/api/health', (req, res) => {
 });
 
 // Start server only if NOT in Vercel environment
-if (process.env.NODE_ENV !== 'production') {
+if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
   const PORT = process.env.PORT || 5000;
   app.listen(PORT, () => {
     console.log(`🕯️ Server running on http://localhost:${PORT}`);
-    console.log('📦 Data storage: MongoDB Atlas 🍃');
+    console.log(`📦 Data storage: ${storage.isLocalMode ? 'Local JSON files (server/data/)' : 'MongoDB Atlas 🍃'}`);
   });
 }
 
