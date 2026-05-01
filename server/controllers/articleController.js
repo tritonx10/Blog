@@ -1,44 +1,46 @@
-const Article = require('../models/Article');
 const slugify = require('slugify');
-const storage = require('../lib/storage');
+const supabase = require('../lib/supabase');
 
 exports.getAllArticles = async (req, res) => {
   try {
     const { category, status, search, page = 1, limit = 9 } = req.query;
 
-    if (req.isLocalMode) {
-      const articles = await storage.getArticles({ category, status, search });
-      return res.json({ 
-        articles: articles.slice((page - 1) * limit, page * limit), 
-        total: articles.length, 
-        pages: Math.ceil(articles.length / limit), 
-        currentPage: parseInt(page) 
-      });
-    }
+    let query = supabase.from('articles').select('id, title, slug, excerpt, category, tags, cover_image, word_count, read_time, status, created_at', { count: 'exact' });
 
-    const query = {};
-    
-    if (category) query.category = category;
-    if (status) query.status = status;
+    if (category) query = query.eq('category', category);
+    if (status) query = query.eq('status', status);
     if (search) {
-      query.$or = [
-        { title: { $regex: search, $options: 'i' } },
-        { excerpt: { $regex: search, $options: 'i' } }
-      ];
+      query = query.or(`title.ilike.%${search}%,excerpt.ilike.%${search}%`);
     }
 
-    const articles = await Article.find(query)
-      .select('-body -comments')
-      .sort({ createdAt: -1 })
-      .skip((page - 1) * limit)
-      .limit(parseInt(limit));
+    query = query.order('created_at', { ascending: false });
 
-    const total = await Article.countDocuments(query);
+    const from = (page - 1) * limit;
+    const to = from + parseInt(limit) - 1;
+    query = query.range(from, to);
+
+    const { data: articles, count, error } = await query;
+
+    if (error) throw error;
+
+    const mappedArticles = articles.map(a => ({
+      _id: a.id,
+      title: a.title,
+      slug: a.slug,
+      excerpt: a.excerpt,
+      category: a.category,
+      tags: a.tags,
+      coverImage: a.cover_image,
+      wordCount: a.word_count,
+      readTime: a.read_time,
+      status: a.status,
+      createdAt: a.created_at
+    }));
 
     res.json({ 
-      articles, 
-      total, 
-      pages: Math.ceil(total / limit), 
+      articles: mappedArticles, 
+      total: count, 
+      pages: Math.ceil(count / limit), 
       currentPage: parseInt(page) 
     });
   } catch (err) {
@@ -48,13 +50,24 @@ exports.getAllArticles = async (req, res) => {
 
 exports.getArticleBySlug = async (req, res) => {
   try {
-    if (req.isLocalMode) {
-      const article = await storage.getArticleBySlug(req.params.slug);
-      if (!article) return res.status(404).json({ message: 'Article not found' });
-      return res.json(article);
-    }
-    const article = await Article.findOne({ slug: req.params.slug });
-    if (!article) return res.status(404).json({ message: 'Article not found' });
+    const { data, error } = await supabase.from('articles').select('*').eq('slug', req.params.slug).single();
+    if (error || !data) return res.status(404).json({ message: 'Article not found' });
+    
+    const article = {
+      _id: data.id,
+      title: data.title,
+      slug: data.slug,
+      excerpt: data.excerpt,
+      body: data.body,
+      category: data.category,
+      tags: data.tags,
+      coverImage: data.cover_image,
+      wordCount: data.word_count,
+      readTime: data.read_time,
+      status: data.status,
+      comments: data.comments,
+      createdAt: data.created_at
+    };
     res.json(article);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -65,24 +78,34 @@ exports.createArticle = async (req, res) => {
   try {
     const { title, excerpt, body, category, tags, coverImage, readTime, status } = req.body;
 
-    // Auto-generate excerpt & readTime
     const cleanText = body ? body.replace(/<[^>]*>/g, '') : '';
     const wordCount = cleanText ? cleanText.split(/\s+/).length : 0;
     let finalExcerpt = excerpt || (cleanText ? cleanText.split(/\s+/).slice(0, 25).join(' ') + '...' : 'A new exploration...');
     const finalReadTime = readTime || Math.max(1, Math.ceil(wordCount / 200));
 
-    if (req.isLocalMode) {
-      const article = await storage.createArticle({ 
-        title, excerpt: finalExcerpt, body, category, tags, coverImage, readTime: finalReadTime, wordCount, status 
-      });
-      return res.status(201).json(article);
-    }
-
     const slug = slugify(title, { lower: true, strict: true });
-    const article = await Article.create({ 
-      title, slug, excerpt: finalExcerpt, body, category, tags, coverImage, readTime: finalReadTime, wordCount, status 
+    
+    const { data, error } = await supabase.from('articles').insert([{
+      title, slug, excerpt: finalExcerpt, body, category, tags, cover_image: coverImage, word_count: wordCount, read_time: finalReadTime, status
+    }]).select().single();
+
+    if (error) throw error;
+    
+    res.status(201).json({
+      _id: data.id,
+      title: data.title,
+      slug: data.slug,
+      excerpt: data.excerpt,
+      body: data.body,
+      category: data.category,
+      tags: data.tags,
+      coverImage: data.cover_image,
+      wordCount: data.word_count,
+      readTime: data.read_time,
+      status: data.status,
+      comments: data.comments,
+      createdAt: data.created_at
     });
-    res.status(201).json(article);
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
@@ -90,33 +113,48 @@ exports.createArticle = async (req, res) => {
 
 exports.updateArticle = async (req, res) => {
   try {
-    const { title, body, excerpt, ...rest } = req.body;
+    const { title, body, excerpt, coverImage, readTime, status, tags, category } = req.body;
 
-    if (req.isLocalMode) {
-      const updated = await storage.updateArticle(req.params.id, { title, body, excerpt, ...rest });
-      return res.json(updated);
-    }
-
-    const updateData = { ...rest };
-    if (title) {
+    const updateData = {};
+    if (title !== undefined) {
       updateData.title = title;
       updateData.slug = slugify(title, { lower: true, strict: true });
     }
-    if (body) {
+    if (body !== undefined) {
       updateData.body = body;
       const cleanText = body.replace(/<[^>]*>/g, '');
       const wordCount = cleanText.split(/\s+/).length;
-      updateData.wordCount = wordCount;
-      updateData.readTime = Math.max(1, Math.ceil(wordCount / 200));
-      if (!excerpt && !rest.excerpt) {
+      updateData.word_count = wordCount;
+      updateData.read_time = Math.max(1, Math.ceil(wordCount / 200));
+      if (!excerpt && !req.body.excerpt) {
         updateData.excerpt = cleanText.split(/\s+/).slice(0, 25).join(' ') + '...';
       }
     }
-    if (excerpt) updateData.excerpt = excerpt;
+    if (excerpt !== undefined) updateData.excerpt = excerpt;
+    if (coverImage !== undefined) updateData.cover_image = coverImage;
+    if (readTime !== undefined) updateData.read_time = readTime;
+    if (status !== undefined) updateData.status = status;
+    if (tags !== undefined) updateData.tags = tags;
+    if (category !== undefined) updateData.category = category;
+
+    const { data, error } = await supabase.from('articles').update(updateData).eq('id', req.params.id).select().single();
+    if (error || !data) return res.status(404).json({ message: 'Article not found' });
     
-    const updated = await Article.findByIdAndUpdate(req.params.id, updateData, { new: true, runValidators: true });
-    if (!updated) return res.status(404).json({ message: 'Article not found' });
-    res.json(updated);
+    res.json({
+      _id: data.id,
+      title: data.title,
+      slug: data.slug,
+      excerpt: data.excerpt,
+      body: data.body,
+      category: data.category,
+      tags: data.tags,
+      coverImage: data.cover_image,
+      wordCount: data.word_count,
+      readTime: data.read_time,
+      status: data.status,
+      comments: data.comments,
+      createdAt: data.created_at
+    });
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
@@ -124,12 +162,8 @@ exports.updateArticle = async (req, res) => {
 
 exports.deleteArticle = async (req, res) => {
   try {
-    if (req.isLocalMode) {
-      await storage.deleteArticle(req.params.id);
-      return res.json({ message: 'Article deleted locally' });
-    }
-    const deleted = await Article.findByIdAndDelete(req.params.id);
-    if (!deleted) return res.status(404).json({ message: 'Article not found' });
+    const { error } = await supabase.from('articles').delete().eq('id', req.params.id);
+    if (error) throw error;
     res.json({ message: 'Article deleted successfully' });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -141,21 +175,21 @@ exports.addComment = async (req, res) => {
     const { name, text } = req.body;
     if (!text?.trim()) return res.status(400).json({ message: 'Comment text is required' });
 
-    if (req.isLocalMode) {
-      const updated = await storage.addComment('articles', req.params.id, { name: name?.trim() || 'Reader', text: text.trim() });
-      if (!updated) return res.status(404).json({ message: 'Not found' });
-      return res.json(updated);
-    }
-    const article = await Article.findById(req.params.id);
-    if (!article) return res.status(404).json({ message: 'Not found' });
-    
-    article.comments.push({
+    const { data: article, error: fetchError } = await supabase.from('articles').select('comments').eq('id', req.params.id).single();
+    if (fetchError || !article) return res.status(404).json({ message: 'Not found' });
+
+    const comments = article.comments || [];
+    comments.push({
+      _id: Date.now().toString(),
       name: name?.trim() || 'Reader',
-      text: text.trim()
+      text: text.trim(),
+      createdAt: new Date().toISOString()
     });
-    
-    await article.save();
-    res.json(article);
+
+    const { data, error } = await supabase.from('articles').update({ comments }).eq('id', req.params.id).select().single();
+    if (error) throw error;
+
+    res.json({ _id: data.id, comments: data.comments });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -163,19 +197,16 @@ exports.addComment = async (req, res) => {
 
 exports.deleteComment = async (req, res) => {
   try {
-    if (req.isLocalMode) {
-      const updated = await storage.deleteComment('articles', req.params.id, req.params.commentId);
-      if (!updated) return res.status(404).json({ message: 'Not found' });
-      return res.json(updated);
-    }
-    const article = await Article.findById(req.params.id);
-    if (!article) return res.status(404).json({ message: 'Not found' });
-    
-    article.comments.pull({ _id: req.params.commentId });
-    await article.save();
-    res.json(article);
+    const { data: article, error: fetchError } = await supabase.from('articles').select('comments').eq('id', req.params.id).single();
+    if (fetchError || !article) return res.status(404).json({ message: 'Not found' });
+
+    const comments = (article.comments || []).filter(c => c._id !== req.params.commentId);
+
+    const { data, error } = await supabase.from('articles').update({ comments }).eq('id', req.params.id).select().single();
+    if (error) throw error;
+
+    res.json({ _id: data.id, comments: data.comments });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 };
-

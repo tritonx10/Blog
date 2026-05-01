@@ -1,9 +1,8 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const mongoose = require('mongoose');
 const rateLimit = require('express-rate-limit');
-const storage = require('./lib/storage');
+const supabase = require('./lib/supabase');
 const app = express();
 
 // Middleware
@@ -14,76 +13,9 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// MongoDB Connection (Cached for Serverless)
-let lastFailureTime = 0;
-const FAILURE_RETRY_DELAY = 30 * 1000; // Try again after 30 seconds if it failed
-const mongoURI = process.env.MONGO_URI || 'mongodb+srv://tritonx10:Suhani_Atlas_2026@cluster0.tqfdiey.mongodb.net/suhani_literary?retryWrites=true&w=majority';
-
-let cached = global.mongoose;
-if (!cached) {
-  cached = global.mongoose = { conn: null, promise: null };
-}
-
-// Initialize Storage (Atlas + Local JSON Fallback)
-storage.init();
-
-async function connectToDatabase() {
-  const now = Date.now();
-  if (now - lastFailureTime < FAILURE_RETRY_DELAY) return null;
-
-  if (cached.conn) return cached.conn;
-
-  if (!cached.promise) {
-    console.log('🔗 Connecting to Atlas...');
-    const opts = {
-      bufferCommands: true, 
-      serverSelectionTimeoutMS: 10000, // 10s for cold starts
-      socketTimeoutMS: 45000,
-      family: 4,
-      maxPoolSize: 1, // Recommended for Vercel
-    };
-
-    cached.promise = mongoose.connect(mongoURI, opts).then((m) => {
-      console.log('🍃 Connected to MongoDB Atlas');
-      storage.setLocalMode(false);
-      lastFailureTime = 0;
-      
-      // BACKGROUND SYNC (Quietly)
-      try {
-        const Post = require('./models/Post');
-        const Article = require('./models/Article');
-        const Book = require('./models/Book');
-        storage.syncToAtlas(Post, Article, Book).catch(() => null);
-      } catch (e) {}
-
-      return m;
-    }).catch((err) => {
-      console.error('❌ Atlas connection failed:', err.message);
-      lastFailureTime = Date.now();
-      cached.promise = null;
-      storage.setLocalMode(true);
-      return null;
-    });
-  }
-
-  try {
-    cached.conn = await cached.promise;
-    return cached.conn;
-  } catch (err) {
-    cached.promise = null;
-    return null;
-  }
-}
-
-// Eagerly connect
-connectToDatabase();
-
+// Attach for controllers
 app.use(async (req, res, next) => {
   if (req.path === '/api/admin/login' || req.path === '/api/health') return next();
-
-  const conn = await connectToDatabase();
-  // Attach storage mode to request for controllers
-  req.isLocalMode = !conn;
   next();
 });
 
@@ -173,10 +105,9 @@ OUTPUT only the transcribed text, nothing else.`,
 
 // Health check
 app.get('/api/health', (req, res) => {
-  const isLocal = storage.isLocalMode;
   res.json({ 
     status: 'ok', 
-    message: `Suhani's Literary API is running 🕯️ (${isLocal ? 'Local Storage Mode' : 'MongoDB Atlas Mode'})` 
+    message: `Suhani's Literary API is running 🕯️ (Supabase Mode)` 
   });
 });
 
@@ -185,7 +116,7 @@ if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
   const PORT = process.env.PORT || 5000;
   app.listen(PORT, () => {
     console.log(`🕯️ Server running on http://localhost:${PORT}`);
-    console.log(`📦 Data storage: ${storage.isLocalMode ? 'Local JSON files (server/data/)' : 'MongoDB Atlas 🍃'}`);
+    console.log(`📦 Data storage: Supabase PostgreSQL ⚡`);
   });
 }
 

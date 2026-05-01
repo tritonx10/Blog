@@ -1,44 +1,46 @@
-const Book = require('../models/Book');
 const slugify = require('slugify');
-const storage = require('../lib/storage');
+const supabase = require('../lib/supabase');
 
 exports.getAllBooks = async (req, res) => {
   try {
     const { genre, status, search, page = 1, limit = 8 } = req.query;
 
-    if (req.isLocalMode) {
-      const books = await storage.getBooks({ genre, status, search });
-      return res.json({ 
-        books: books.slice((page - 1) * limit, page * limit), 
-        total: books.length, 
-        pages: Math.ceil(books.length / limit), 
-        currentPage: parseInt(page) 
-      });
-    }
+    let query = supabase.from('books').select('id, title, slug, synopsis, genre, year, cover_image, external_link, status, featured, created_at', { count: 'exact' });
 
-    const query = {};
-    
-    if (genre) query.genre = genre;
-    if (status) query.status = status;
+    if (genre) query = query.eq('genre', genre);
+    if (status) query = query.eq('status', status);
     if (search) {
-      query.$or = [
-        { title: { $regex: search, $options: 'i' } },
-        { synopsis: { $regex: search, $options: 'i' } }
-      ];
+      query = query.or(`title.ilike.%${search}%,synopsis.ilike.%${search}%`);
     }
 
-    const books = await Book.find(query)
-      .select('-chapters -comments')
-      .sort({ createdAt: -1 })
-      .skip((page - 1) * limit)
-      .limit(parseInt(limit));
+    query = query.order('created_at', { ascending: false });
 
-    const total = await Book.countDocuments(query);
+    const from = (page - 1) * limit;
+    const to = from + parseInt(limit) - 1;
+    query = query.range(from, to);
+
+    const { data: books, count, error } = await query;
+
+    if (error) throw error;
+
+    const mappedBooks = books.map(b => ({
+      _id: b.id,
+      title: b.title,
+      slug: b.slug,
+      synopsis: b.synopsis,
+      genre: b.genre,
+      year: b.year,
+      coverImage: b.cover_image,
+      externalLink: b.external_link,
+      status: b.status,
+      featured: b.featured,
+      createdAt: b.created_at
+    }));
 
     res.json({ 
-      books, 
-      total, 
-      pages: Math.ceil(total / limit), 
+      books: mappedBooks, 
+      total: count, 
+      pages: Math.ceil(count / limit), 
       currentPage: parseInt(page) 
     });
   } catch (err) {
@@ -48,13 +50,24 @@ exports.getAllBooks = async (req, res) => {
 
 exports.getBookBySlug = async (req, res) => {
   try {
-    if (req.isLocalMode) {
-      const book = await storage.getBookBySlug(req.params.slug);
-      if (!book) return res.status(404).json({ message: 'Book not found' });
-      return res.json(book);
-    }
-    const book = await Book.findOne({ slug: req.params.slug });
-    if (!book) return res.status(404).json({ message: 'Book not found' });
+    const { data, error } = await supabase.from('books').select('*').eq('slug', req.params.slug).single();
+    if (error || !data) return res.status(404).json({ message: 'Book not found' });
+    
+    const book = {
+      _id: data.id,
+      title: data.title,
+      slug: data.slug,
+      synopsis: data.synopsis,
+      genre: data.genre,
+      year: data.year,
+      coverImage: data.cover_image,
+      chapters: data.chapters,
+      externalLink: data.external_link,
+      status: data.status,
+      featured: data.featured,
+      comments: data.comments,
+      createdAt: data.created_at
+    };
     res.json(book);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -63,9 +76,9 @@ exports.getBookBySlug = async (req, res) => {
 
 exports.getBookChapters = async (req, res) => {
   try {
-    const book = await Book.findById(req.params.id);
-    if (!book) return res.status(404).json({ message: 'Book not found' });
-    res.json(book.chapters || []);
+    const { data, error } = await supabase.from('books').select('chapters').eq('id', req.params.id).single();
+    if (error || !data) return res.status(404).json({ message: 'Book not found' });
+    res.json(data.chapters || []);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -78,18 +91,29 @@ exports.createBook = async (req, res) => {
     if (!title?.trim()) return res.status(400).json({ message: 'Title is required' });
     if (!synopsis?.trim()) return res.status(400).json({ message: 'Synopsis is required' });
 
-    if (req.isLocalMode) {
-      const book = await storage.createBook({ 
-        title, synopsis, genre, year, coverImage, status, chapters, featured, externalLink 
-      });
-      return res.status(201).json(book);
-    }
-
     const slug = slugify(title, { lower: true, strict: true });
-    const book = await Book.create({ 
-      title, slug, synopsis, genre, year, coverImage, status, chapters, featured, externalLink 
+    
+    const { data, error } = await supabase.from('books').insert([{
+      title, slug, synopsis, genre, year, cover_image: coverImage, status, chapters, featured, external_link: externalLink
+    }]).select().single();
+
+    if (error) throw error;
+    
+    res.status(201).json({
+      _id: data.id,
+      title: data.title,
+      slug: data.slug,
+      synopsis: data.synopsis,
+      genre: data.genre,
+      year: data.year,
+      coverImage: data.cover_image,
+      chapters: data.chapters,
+      externalLink: data.external_link,
+      status: data.status,
+      featured: data.featured,
+      comments: data.comments,
+      createdAt: data.created_at
     });
-    res.status(201).json(book);
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
@@ -97,22 +121,40 @@ exports.createBook = async (req, res) => {
 
 exports.updateBook = async (req, res) => {
   try {
-    const { title, ...rest } = req.body;
+    const { title, synopsis, genre, year, coverImage, status, chapters, featured, externalLink } = req.body;
 
-    if (req.isLocalMode) {
-      const updated = await storage.updateBook(req.params.id, { title, ...rest });
-      return res.json(updated);
-    }
-
-    const updateData = { ...rest };
-    if (title) {
+    const updateData = {};
+    if (title !== undefined) {
       updateData.title = title;
       updateData.slug = slugify(title, { lower: true, strict: true });
     }
+    if (synopsis !== undefined) updateData.synopsis = synopsis;
+    if (genre !== undefined) updateData.genre = genre;
+    if (year !== undefined) updateData.year = year;
+    if (coverImage !== undefined) updateData.cover_image = coverImage;
+    if (status !== undefined) updateData.status = status;
+    if (chapters !== undefined) updateData.chapters = chapters;
+    if (featured !== undefined) updateData.featured = featured;
+    if (externalLink !== undefined) updateData.external_link = externalLink;
+
+    const { data, error } = await supabase.from('books').update(updateData).eq('id', req.params.id).select().single();
+    if (error || !data) return res.status(404).json({ message: 'Book not found' });
     
-    const updated = await Book.findByIdAndUpdate(req.params.id, updateData, { new: true, runValidators: true });
-    if (!updated) return res.status(404).json({ message: 'Book not found' });
-    res.json(updated);
+    res.json({
+      _id: data.id,
+      title: data.title,
+      slug: data.slug,
+      synopsis: data.synopsis,
+      genre: data.genre,
+      year: data.year,
+      coverImage: data.cover_image,
+      chapters: data.chapters,
+      externalLink: data.external_link,
+      status: data.status,
+      featured: data.featured,
+      comments: data.comments,
+      createdAt: data.created_at
+    });
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
@@ -120,12 +162,8 @@ exports.updateBook = async (req, res) => {
 
 exports.deleteBook = async (req, res) => {
   try {
-    if (req.isLocalMode) {
-      await storage.deleteBook(req.params.id);
-      return res.json({ message: 'Book deleted locally' });
-    }
-    const deleted = await Book.findByIdAndDelete(req.params.id);
-    if (!deleted) return res.status(404).json({ message: 'Book not found' });
+    const { error } = await supabase.from('books').delete().eq('id', req.params.id);
+    if (error) throw error;
     res.json({ message: 'Book deleted successfully' });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -137,22 +175,21 @@ exports.addComment = async (req, res) => {
     const { name, text } = req.body;
     if (!text?.trim()) return res.status(400).json({ message: 'Comment text is required' });
 
-    if (req.isLocalMode) {
-      const updated = await storage.addComment('books', req.params.id, { name: name?.trim() || 'Reader', text: text.trim() });
-      if (!updated) return res.status(404).json({ message: 'Not found' });
-      return res.json(updated);
-    }
+    const { data: book, error: fetchError } = await supabase.from('books').select('comments').eq('id', req.params.id).single();
+    if (fetchError || !book) return res.status(404).json({ message: 'Not found' });
 
-    const book = await Book.findById(req.params.id);
-    if (!book) return res.status(404).json({ message: 'Not found' });
-    
-    book.comments.push({
+    const comments = book.comments || [];
+    comments.push({
+      _id: Date.now().toString(),
       name: name?.trim() || 'Reader',
-      text: text.trim()
+      text: text.trim(),
+      createdAt: new Date().toISOString()
     });
-    
-    await book.save();
-    res.json(book);
+
+    const { data, error } = await supabase.from('books').update({ comments }).eq('id', req.params.id).select().single();
+    if (error) throw error;
+
+    res.json({ _id: data.id, comments: data.comments });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -160,20 +197,16 @@ exports.addComment = async (req, res) => {
 
 exports.deleteComment = async (req, res) => {
   try {
-    if (req.isLocalMode) {
-      const updated = await storage.deleteComment('books', req.params.id, req.params.commentId);
-      if (!updated) return res.status(404).json({ message: 'Not found' });
-      return res.json(updated);
-    }
+    const { data: book, error: fetchError } = await supabase.from('books').select('comments').eq('id', req.params.id).single();
+    if (fetchError || !book) return res.status(404).json({ message: 'Not found' });
 
-    const book = await Book.findById(req.params.id);
-    if (!book) return res.status(404).json({ message: 'Not found' });
-    
-    book.comments.pull({ _id: req.params.commentId });
-    await book.save();
-    res.json(book);
+    const comments = (book.comments || []).filter(c => c._id !== req.params.commentId);
+
+    const { data, error } = await supabase.from('books').update({ comments }).eq('id', req.params.id).select().single();
+    if (error) throw error;
+
+    res.json({ _id: data.id, comments: data.comments });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 };
-

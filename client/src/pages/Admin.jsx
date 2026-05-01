@@ -28,7 +28,6 @@ export default function Admin() {
   const [loading, setLoading] = useState(false);
   
   const [activeTab, setActiveTab] = useState('posts');
-  const [isLocalMode, setIsLocalMode] = useState(false);
   const [items, setItems] = useState([]);
   const [itemsLoading, setItemsLoading] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
@@ -83,18 +82,6 @@ export default function Admin() {
       setItemsLoading(false);
     }
   }
-
-  useEffect(() => {
-    async function checkMode() {
-      try {
-        const res = await api.get('/health');
-        if (res.data.message.includes('Local Storage Mode')) {
-          setIsLocalMode(true);
-        }
-      } catch (e) {}
-    }
-    if (isAuthenticated) checkMode();
-  }, [isAuthenticated]);
 
   useEffect(() => {
     if (isAuthenticated) fetchData();
@@ -238,12 +225,6 @@ export default function Admin() {
             <h1 className="font-heading text-4xl text-ink">Dashboard</h1>
           </div>
           <p className="font-body text-brown-lighter italic">Managing your literary world.</p>
-          {isLocalMode && (
-            <div className="mt-2 flex items-center gap-2 px-3 py-1 bg-gold/10 border border-gold/20 rounded-lg w-fit">
-              <AlertCircle size={14} className="text-gold" />
-              <span className="text-[10px] font-sans font-bold text-gold uppercase tracking-tighter">Local Storage Mode</span>
-            </div>
-          )}
         </div>
         <div className="flex items-center gap-3">
           <button onClick={handleAdd} className="btn-gold flex items-center gap-2">
