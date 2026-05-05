@@ -7,6 +7,8 @@ server/node_modules/
 .env
 .env.local
 .env.*.local
+.env.vercel
+.env.vercel.*
 client/.env
 server/.env
 
