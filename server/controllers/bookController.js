@@ -5,7 +5,7 @@ exports.getAllBooks = async (req, res) => {
   try {
     const { genre, status, search, page = 1, limit = 8 } = req.query;
 
-    let query = supabase.from('books').select('id, title, slug, synopsis, genre, year, cover_image, external_link, status, featured, created_at', { count: 'exact' });
+    let query = supabase.from('books').select('id, title, slug, synopsis, genre, year, cover_image, external_link, chapters, status, featured, created_at', { count: 'exact' });
 
     if (genre) query = query.eq('genre', genre);
     if (status) query = query.eq('status', status);
@@ -32,6 +32,7 @@ exports.getAllBooks = async (req, res) => {
       year: b.year,
       coverImage: b.cover_image,
       externalLink: b.external_link,
+      chapters: b.chapters,
       status: b.status,
       featured: b.featured,
       createdAt: b.created_at

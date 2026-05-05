@@ -5,7 +5,7 @@ exports.getAllPosts = async (req, res) => {
   try {
     const { category, status, search, page = 1, limit = 9 } = req.query;
 
-    let query = supabase.from('posts').select('id, title, slug, excerpt, category, tags, cover_image, read_time, status, created_at', { count: 'exact' });
+    let query = supabase.from('posts').select('id, title, slug, excerpt, body, category, tags, cover_image, read_time, status, created_at', { count: 'exact' });
 
     if (category) query = query.eq('category', category);
     if (status) query = query.eq('status', status);
@@ -28,6 +28,7 @@ exports.getAllPosts = async (req, res) => {
       title: p.title,
       slug: p.slug,
       excerpt: p.excerpt,
+      body: p.body,
       category: p.category,
       tags: p.tags,
       coverImage: p.cover_image,
