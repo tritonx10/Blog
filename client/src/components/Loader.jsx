@@ -1,7 +1,7 @@
-export function Spinner({ size = 'md' }) {
-  const sizes = { sm: 'h-6 w-6', md: 'h-10 w-10', lg: 'h-16 w-16' };
+export function Spinner({ size = 'md', className = 'py-16' }) {
+  const sizes = { sm: 'h-5 w-5', md: 'h-10 w-10', lg: 'h-16 w-16' };
   return (
-    <div className="flex items-center justify-center py-16">
+    <div className={`flex items-center justify-center ${className}`}>
       <div
         className={`${sizes[size]} border-[3px] border-parchment-dark border-t-gold rounded-full animate-spin`}
       />

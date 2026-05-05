@@ -158,9 +158,18 @@ export default function Admin() {
       console.error('Save error:', err);
       const apiError = err.response?.data?.error;
       const apiMsg = err.response?.data?.message;
+      let errorText = 'Save failed. Please check your internet connection and Atlas settings.';
+      if (apiMsg) {
+         errorText = typeof apiMsg === 'string' ? apiMsg : JSON.stringify(apiMsg);
+      } else if (apiError) {
+         errorText = typeof apiError === 'string' ? apiError : (apiError.message || JSON.stringify(apiError));
+      } else if (err.message) {
+         errorText = err.message;
+      }
+
       setFormMsg({ 
         type: 'error', 
-        text: `${apiMsg || apiError || 'Save failed. Please check your internet connection and Atlas settings.'}` 
+        text: errorText 
       });
     } finally {
       setLoading(false);
@@ -209,7 +218,7 @@ export default function Admin() {
           </div>
           {loginError && <p className="text-red-500 text-sm italic">{loginError}</p>}
           <button type="submit" className="btn-gold w-full mt-2 flex items-center justify-center gap-2" disabled={loading}>
-            {loading ? <Spinner size="sm" /> : 'Enter Sanctuary'}
+            {loading ? <Spinner size="sm" className="" /> : 'Enter Sanctuary'}
           </button>
         </form>
       </motion.div>
@@ -314,7 +323,7 @@ export default function Admin() {
                   </h2>
                   <div className="flex items-center gap-3">
                     <button type="submit" disabled={loading} className="btn-gold flex items-center gap-2">
-                       {loading ? <Spinner size="sm" /> : <><Save size={18} /> Save Changes</>}
+                       {loading ? <Spinner size="sm" className="" /> : <><Save size={18} /> Save Changes</>}
                     </button>
                     <button type="button" onClick={() => setIsFormOpen(false)} className="p-2 text-brown-lighter hover:text-ink">
                       <X size={24} />

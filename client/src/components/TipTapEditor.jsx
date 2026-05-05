@@ -59,6 +59,11 @@ export default function TipTapEditor({ content, onChange }) {
       FontSize,
     ],
     content,
+    editorProps: {
+      attributes: {
+        class: 'min-h-[300px] focus:outline-none cursor-text',
+      },
+    },
     onUpdate: ({ editor }) => {
       onChange(editor.getHTML());
     },
@@ -228,10 +233,12 @@ export default function TipTapEditor({ content, onChange }) {
       </div>
 
       {/* Content Area */}
-      <EditorContent
-        editor={editor}
-        className="prose-literary min-h-[300px] max-h-[600px] overflow-y-auto px-5 py-4 focus:outline-none"
-      />
+      <div className="max-h-[600px] overflow-y-auto px-5 py-4 cursor-text" onClick={() => editor.chain().focus().run()}>
+        <EditorContent
+          editor={editor}
+          className="prose-literary focus:outline-none"
+        />
+      </div>
 
       {/* Handwriting Scanner Modal */}
       <AnimatePresence>
