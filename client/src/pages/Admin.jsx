@@ -2,13 +2,13 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Lock, LayoutDashboard, FileText, BookOpen, Plus, 
-  Trash2, Edit3, Save, X, Eye, EyeOff, LogOut, Check, AlertCircle 
+  Trash2, Edit3, Save, X, Eye, EyeOff, LogOut, Check, AlertCircle, ChevronDown, Upload 
 } from 'lucide-react';
 import { 
   adminLogin, getPosts, getArticles, getBooks, 
-  createPost, updatePost, deletePost,
-  createArticle, updateArticle, deleteArticle,
-  createBook, updateBook, deleteBook
+  createPost, updatePost, deletePost, addPostComment, deletePostComment,
+  createArticle, updateArticle, deleteArticle, addArticleComment, deleteArticleComment,
+  createBook, updateBook, deleteBook, addBookComment, deleteBookComment
 } from '../lib/api';
 import TipTapEditor from '../components/TipTapEditor';
 import { Spinner } from '../components/Loader';
@@ -33,6 +33,26 @@ export default function Admin() {
   const [editingItem, setEditingItem] = useState(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [formMsg, setFormMsg] = useState({ type: '', text: '' });
+  const [expandedChapterIndex, setExpandedChapterIndex] = useState(null);
+  const [confirmDialog, setConfirmDialog] = useState(null);
+
+  // ── Helpers ──────────────────────────────────────────
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    // Check size (limit to 2MB for Base64 storage)
+    if (file.size > 2 * 1024 * 1024) {
+      alert('Image is too large. Please use an image under 2MB.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setEditingItem(prev => ({ ...prev, coverImage: reader.result }));
+    };
+    reader.readAsDataURL(file);
+  };
 
   // ── Auth ──────────────────────────────────────────────
   async function handleLogin(e) {
@@ -88,8 +108,12 @@ export default function Admin() {
   }, [isAuthenticated, activeTab]);
 
   // ── CRUD Ops ──────────────────────────────────────────
-  async function handleDelete(id) {
-    if (!window.confirm('Are you sure you want to delete this item?')) return;
+  async function handleDelete(id, confirmed = false) {
+    if (!confirmed) {
+      setConfirmDialog({ type: 'post', id });
+      return;
+    }
+    
     try {
       if (activeTab === 'posts') await deletePost(id);
       else if (activeTab === 'articles') await deleteArticle(id);
@@ -111,11 +135,37 @@ export default function Admin() {
       tags: [], featured: false, chapters: []
     });
     setIsFormOpen(true);
+    setFormMsg({ type: '', text: '' });
   }
 
   function handleEdit(item) {
     setEditingItem({ ...item });
     setIsFormOpen(true);
+    setFormMsg({ type: '', text: '' });
+  }
+
+  useEffect(() => {
+    if (!isFormOpen) {
+      setFormMsg({ type: '', text: '' });
+      setExpandedChapterIndex(null);
+    }
+  }, [isFormOpen]);
+
+  async function handleDeleteCommentFromAdmin(commentId, confirmed = false) {
+    if (!confirmed) {
+      setConfirmDialog({ type: 'comment', id: commentId });
+      return;
+    }
+    try {
+      let res;
+      if (activeTab === 'posts') res = await deletePostComment(editingItem._id, commentId);
+      else if (activeTab === 'articles') res = await deleteArticleComment(editingItem._id, commentId);
+      else if (activeTab === 'books') res = await deleteBookComment(editingItem._id, commentId);
+      
+      setEditingItem(prev => ({ ...prev, comments: res.data.comments }));
+    } catch (err) {
+      alert('Failed to delete comment.');
+    }
   }
 
   async function handleSave(e) {
@@ -441,17 +491,39 @@ export default function Admin() {
                     {/* Right Column */}
                     <div className="space-y-6">
                        <div>
-                        <label className="form-label">Cover Image URL</label>
-                        <input
-                          type="text"
-                          value={editingItem.coverImage}
-                          onChange={(e) => setEditingItem({ ...editingItem, coverImage: e.target.value })}
-                          className="form-input"
-                          placeholder="https://images.unsplash.com/..."
-                        />
-                        {editingItem.coverImage && (
-                          <img src={editingItem.coverImage} loading="lazy" className="mt-3 w-full h-32 object-cover rounded-lg border border-parchment-dark" alt="Preview" />
-                        )}
+                        <label className="form-label">Cover Image</label>
+                        <div className="relative group">
+                          {editingItem.coverImage ? (
+                            <div className="relative rounded-xl overflow-hidden border border-parchment-dark shadow-sm bg-white">
+                              <img src={editingItem.coverImage} className="w-full h-48 object-cover" alt="Cover Preview" />
+                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+                                <label className="cursor-pointer p-2 bg-white rounded-full text-brown hover:bg-gold hover:text-white transition-colors" title="Change Image">
+                                  <Upload size={18} />
+                                  <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                                </label>
+                                <button 
+                                  type="button" 
+                                  onClick={() => setEditingItem(prev => ({ ...prev, coverImage: '' }))}
+                                  className="p-2 bg-white rounded-full text-red-500 hover:bg-red-500 hover:text-white transition-colors"
+                                  title="Remove Image"
+                                >
+                                  <Trash2 size={18} />
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <label className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-parchment-dark rounded-xl bg-parchment/30 hover:bg-parchment/50 hover:border-gold transition-all cursor-pointer group">
+                              <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                                <div className="w-12 h-12 rounded-full bg-gold/10 flex items-center justify-center mb-3 group-hover:bg-gold/20 transition-colors">
+                                  <Upload size={20} className="text-gold" />
+                                </div>
+                                <p className="mb-1 text-sm text-brown font-sans font-medium">Upload Cover Image</p>
+                                <p className="text-xs text-brown-lighter font-sans italic text-center px-4">JPG, PNG or WEBP (Max 2MB)</p>
+                              </div>
+                              <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                            </label>
+                          )}
+                        </div>
                       </div>
 
                       <div className="grid grid-cols-2 gap-4">
@@ -524,10 +596,14 @@ export default function Admin() {
                         <label className="form-label mb-0">Book Chapters</label>
                         <button
                           type="button"
-                          onClick={() => setEditingItem({
-                            ...editingItem,
-                            chapters: [...(editingItem.chapters || []), { title: 'Untitled Chapter', content: '', order: (editingItem.chapters?.length || 0) + 1 }]
-                          })}
+                          onClick={() => {
+                            const newIndex = editingItem.chapters?.length || 0;
+                            setEditingItem({
+                              ...editingItem,
+                              chapters: [...(editingItem.chapters || []), { title: 'Untitled Chapter', content: '', order: newIndex + 1 }]
+                            });
+                            setExpandedChapterIndex(newIndex);
+                          }}
                           className="text-xs font-sans font-medium text-gold hover:text-gold-dark flex items-center gap-1"
                         >
                           <Plus size={14} /> Add Chapter
@@ -535,47 +611,160 @@ export default function Admin() {
                       </div>
                       
                       <div className="space-y-4">
-                        {(editingItem.chapters || []).map((chap, i) => (
-                          <div key={i} className="p-5 border border-parchment-dark rounded-xl bg-white space-y-4">
-                            <div className="flex items-center gap-4">
-                              <span className="font-sans text-xs text-gold-dark font-medium">{i + 1}</span>
-                              <input
-                                type="text"
-                                value={chap.title}
-                                onChange={(e) => {
-                                  const newChaps = [...editingItem.chapters];
-                                  newChaps[i].title = e.target.value;
-                                  setEditingItem({ ...editingItem, chapters: newChaps });
-                                }}
-                                className="flex-1 font-sans text-sm border-none focus:ring-0 p-0 text-ink placeholder-brown-lighter font-medium"
-                                placeholder="Chapter Title"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const newChaps = editingItem.chapters.filter((_, idx) => idx !== i);
-                                  setEditingItem({ ...editingItem, chapters: newChaps });
-                                }}
-                                className="text-brown-lighter hover:text-red-500"
+                        {(editingItem.chapters || []).map((chap, i) => {
+                          const isExpanded = expandedChapterIndex === i;
+                          return (
+                            <div key={i} className="border border-parchment-dark rounded-xl bg-white overflow-hidden">
+                              <div 
+                                className="flex items-center gap-4 p-5 cursor-pointer hover:bg-parchment/50 transition-colors"
+                                onClick={() => setExpandedChapterIndex(isExpanded ? null : i)}
                               >
-                                <Trash2 size={16} />
-                              </button>
+                                <span className="font-sans text-xs text-gold-dark font-medium">{String(i + 1).padStart(2, '0')}</span>
+                                <div className="flex-1 font-heading text-lg text-ink">
+                                  {chap.title || 'Untitled Chapter'}
+                                </div>
+                                <div className="flex items-center gap-3" onClick={e => e.stopPropagation()}>
+                                  <button
+                                    type="button"
+                                    onClick={() => setConfirmDialog({ type: 'chapter', index: i })}
+                                    className="text-brown-lighter hover:text-red-500 p-2"
+                                  >
+                                    <Trash2 size={16} />
+                                  </button>
+                                  <motion.div
+                                    animate={{ rotate: isExpanded ? 180 : 0 }}
+                                    className="text-brown-lighter"
+                                  >
+                                    <ChevronDown size={18} />
+                                  </motion.div>
+                                </div>
+                              </div>
+                              <AnimatePresence>
+                                {isExpanded && (
+                                  <motion.div
+                                    initial={{ height: 0, opacity: 0 }}
+                                    animate={{ height: 'auto', opacity: 1 }}
+                                    exit={{ height: 0, opacity: 0 }}
+                                    className="px-5 pb-5 border-t border-parchment-dark/50 pt-5"
+                                  >
+                                    <div className="mb-4">
+                                      <label className="form-label">Chapter Title</label>
+                                      <input
+                                        type="text"
+                                        value={chap.title}
+                                        onChange={(e) => {
+                                          const newChaps = [...editingItem.chapters];
+                                          newChaps[i].title = e.target.value;
+                                          setEditingItem({ ...editingItem, chapters: newChaps });
+                                        }}
+                                        className="form-input"
+                                        placeholder="Chapter Title"
+                                      />
+                                    </div>
+                                    <div>
+                                      <label className="form-label">Chapter Content</label>
+                                      <TipTapEditor
+                                        content={chap.content}
+                                        onChange={(html) => {
+                                          const newChaps = [...editingItem.chapters];
+                                          newChaps[i].content = html;
+                                          setEditingItem({ ...editingItem, chapters: newChaps });
+                                        }}
+                                      />
+                                    </div>
+                                  </motion.div>
+                                )}
+                              </AnimatePresence>
                             </div>
-                            <TipTapEditor
-                              content={chap.content}
-                              onChange={(html) => {
-                                const newChaps = [...editingItem.chapters];
-                                newChaps[i].content = html;
-                                setEditingItem({ ...editingItem, chapters: newChaps });
-                              }}
-                            />
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Reader Reviews Management */}
+                  {editingItem._id && (
+                    <div className="space-y-6 pt-8 border-t border-parchment-dark">
+                      <div className="flex items-center justify-between">
+                        <label className="form-label mb-0 text-gold-dark">Reader Thoughts ({editingItem.comments?.length || 0})</label>
+                      </div>
+                      <div className="space-y-3">
+                        {(editingItem.comments || []).map((comment, i) => (
+                          <div key={comment._id || i} className="flex items-center justify-between p-4 bg-white border border-parchment-dark rounded-xl gap-4">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <p className="text-sm font-sans font-medium text-ink">{comment.name || 'Anonymous'}</p>
+                                <span className="text-[10px] text-brown-lighter font-sans uppercase tracking-wider">
+                                  {new Date(comment.createdAt).toLocaleDateString()}
+                                </span>
+                              </div>
+                              <p className="text-sm font-body text-brown-lighter line-clamp-2 italic">"{comment.text}"</p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setConfirmDialog({ type: 'comment', id: comment._id || comment.id })}
+                              className="p-2 text-brown-lighter hover:text-red-500 transition-colors"
+                              title="Delete Review"
+                            >
+                              <Trash2 size={18} />
+                            </button>
                           </div>
                         ))}
+                        {(editingItem.comments || []).length === 0 && (
+                          <p className="text-center py-6 text-brown-lighter italic font-sans text-sm">No reviews for this piece yet.</p>
+                        )}
                       </div>
                     </div>
                   )}
                 </div>
               </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Custom Confirmation Modal */}
+      <AnimatePresence>
+        {confirmDialog && (
+          <div className="fixed inset-0 z-[70] flex items-center justify-center bg-brown/60 backdrop-blur-sm p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full max-w-sm bg-white rounded-2xl shadow-warm p-6 text-center"
+            >
+              <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-4 text-red-500">
+                <AlertCircle size={24} />
+              </div>
+              <h3 className="font-heading text-2xl text-ink mb-2">Delete this item?</h3>
+              <p className="font-sans text-sm text-brown-lighter mb-6">
+                This action is permanent and cannot be undone. Are you completely sure?
+              </p>
+              <div className="flex gap-3 justify-center">
+                <button
+                  onClick={() => setConfirmDialog(null)}
+                  className="px-5 py-2.5 rounded-full font-sans text-sm font-medium border border-parchment-dark text-brown hover:bg-parchment transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    if (confirmDialog.type === 'post') {
+                      handleDelete(confirmDialog.id, true);
+                    } else if (confirmDialog.type === 'comment') {
+                      handleDeleteCommentFromAdmin(confirmDialog.id, true);
+                    } else if (confirmDialog.type === 'chapter') {
+                      const newChaps = editingItem.chapters.filter((_, idx) => idx !== confirmDialog.index);
+                      setEditingItem({ ...editingItem, chapters: newChaps });
+                      if (expandedChapterIndex === confirmDialog.index) setExpandedChapterIndex(null);
+                    }
+                    setConfirmDialog(null);
+                  }}
+                  className="px-5 py-2.5 rounded-full font-sans text-sm font-medium bg-red-500 text-white hover:bg-red-600 transition-colors shadow-sm"
+                >
+                  Yes, Delete
+                </button>
+              </div>
             </motion.div>
           </div>
         )}

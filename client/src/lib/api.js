@@ -5,6 +5,15 @@ const api = axios.create({
   withCredentials: true,
 });
 
+// Add Authorization header for admin actions
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('admin_token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 // ── Posts ──────────────────────────────────────────────
 export const getPosts = (params) => api.get('/posts', { params });
 export const getPostBySlug = (slug) => api.get(`/posts/${slug}`);

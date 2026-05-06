@@ -5,13 +5,20 @@ export default function BookCard({ book }) {
   return (
     <Link to={`/books/${book.slug}`} className="group block card h-full">
       {/* Cover */}
-      <div className="relative h-64 overflow-hidden bg-parchment-dark">
+      <div className="relative h-64 overflow-hidden bg-parchment-dark shadow-[inset_0_0_30px_rgba(0,0,0,0.05)]">
         {book.coverImage ? (
-          <img
-            src={book.coverImage}
-            alt={book.title}
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-          />
+          <>
+            <img
+              src={book.coverImage}
+              alt=""
+              className="absolute inset-0 w-full h-full object-cover blur-md opacity-25 scale-110 pointer-events-none"
+            />
+            <img
+              src={book.coverImage}
+              alt={book.title}
+              className="relative w-full h-full object-contain transition-transform duration-500 group-hover:scale-105"
+            />
+          </>
         ) : (
           <div className="w-full h-full flex flex-col items-center justify-center gap-3 bg-gradient-to-br from-brown/10 to-gold/10">
             <BookOpen size={40} className="text-gold/50" />

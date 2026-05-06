@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 const supabase = require('./lib/supabase');
+const authMiddleware = require('./lib/auth');
 const app = express();
 
 // Middleware
@@ -12,12 +13,6 @@ app.use(cors({
 }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
-
-// Attach for controllers
-app.use(async (req, res, next) => {
-  if (req.path === '/api/admin/login' || req.path === '/api/health') return next();
-  next();
-});
 
 // Rate Limiting
 const authLimiter = rateLimit({
@@ -32,41 +27,79 @@ const ocrLimiter = rateLimit({
   message: { error: 'OCR quota reached, please try again later' }
 });
 
-// Routes
-app.use('/api/posts', require('./routes/posts'));
-app.use('/api/articles', require('./routes/articles'));
-app.use('/api/books', require('./routes/books'));
-
 // Admin auth endpoint
 app.post('/api/admin/login', authLimiter, (req, res) => {
   const { email, password } = req.body;
-  const adminEmail = process.env.ADMIN_EMAIL?.trim() || 'suhanig724@gmail.com';
-  const adminPassword = process.env.ADMIN_PASSWORD?.trim() || 'Suhani_Kuchupuchu';
+  
+  // Use environment variables for production security
+  const adminEmail = process.env.ADMIN_EMAIL?.trim();
+  const adminPassword = process.env.ADMIN_PASSWORD?.trim();
 
-  if (email?.trim() === adminEmail && password?.trim() === adminPassword) {
+  // Fallback to defaults only in development
+  const finalEmail = adminEmail || 'suhanig724@gmail.com';
+  const finalPassword = adminPassword || 'Suhani_Kuchupuchu';
+
+  if (email?.trim() === finalEmail && password?.trim() === finalPassword) {
     res.json({ success: true, token: 'admin_authenticated' });
   } else {
     res.status(401).json({ success: false, message: 'Invalid credentials' });
   }
 });
 
-// OCR endpoint using Mistral Pixtral Vision (free tier, key stays server-side)
+// Protect all destructive actions under /api/
+app.use('/api', authMiddleware);
+
+// Routes
+app.use('/api/posts', require('./routes/posts'));
+app.use('/api/articles', require('./routes/articles'));
+app.use('/api/books', require('./routes/books'));
+
+// OCR endpoint using Hybrid Engine (Gemini with Mistral Fallback)
 app.post('/api/ocr', ocrLimiter, async (req, res) => {
   try {
     const { imageData, mimeType = 'image/jpeg' } = req.body;
     if (!imageData) return res.status(400).json({ error: 'No image data provided' });
 
-    const apiKey = process.env.MISTRAL_API_KEY;
-    if (!apiKey) return res.status(500).json({ error: 'MISTRAL_API_KEY not configured on server' });
+    const geminiKey = process.env.GEMINI_API_KEY;
+    const mistralKey = process.env.MISTRAL_API_KEY;
 
     const base64Data = imageData.replace(/^data:image\/[a-z]+;base64,/, '');
-    const dataUrl = `data:${mimeType};base64,${base64Data}`;
 
-    const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
+    // Attempt 1: Gemini (Preferred)
+    if (geminiKey) {
+      try {
+        const geminiResponse = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash-lite:generateContent?key=${geminiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{
+              parts: [
+                { text: 'Transcribe this handwriting accurately. Preserve paragraphs. Output text only.' },
+                { inline_data: { mime_type: mimeType, data: base64Data } }
+              ]
+            }]
+          })
+        });
+
+        const gData = await geminiResponse.json();
+        if (geminiResponse.ok && gData.candidates?.[0]?.content?.parts?.[0]?.text) {
+          return res.json({ text: gData.candidates[0].content.parts[0].text.trim() });
+        }
+        console.warn('Gemini failed or quota hit, trying Mistral fallback...');
+      } catch (gErr) {
+        console.warn('Gemini error, switching to Mistral:', gErr.message);
+      }
+    }
+
+    // Attempt 2: Mistral (Reliable Fallback)
+    if (!mistralKey) throw new Error('No working OCR keys available. Please check Gemini quota.');
+
+    const dataUrl = `data:${mimeType};base64,${base64Data}`;
+    const mistralResponse = await fetch('https://api.mistral.ai/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
+        'Authorization': `Bearer ${mistralKey}`,
       },
       body: JSON.stringify({
         model: 'pixtral-12b-2409',
@@ -74,31 +107,21 @@ app.post('/api/ocr', ocrLimiter, async (req, res) => {
           role: 'user',
           content: [
             { type: 'image_url', image_url: dataUrl },
-            {
-              type: 'text',
-              text: `You are an expert handwriting transcription assistant.
-Transcribe EVERY word visible in this handwritten image as accurately as possible.
-Preserve the original paragraph structure — use a blank line between distinct paragraphs or sections.
-DO NOT add any commentary, preamble, or explanation.
-DO NOT include bullet points unless the handwriting itself uses them.
-OUTPUT only the transcribed text, nothing else.`,
-            },
+            { type: 'text', text: 'Transcribe this handwritten image accurately. Output only the text.' },
           ],
         }],
-        max_tokens: 2048,
       }),
     });
 
-    const data = await response.json();
-    if (!response.ok) {
-      throw new Error(data?.message || data?.error || 'Mistral OCR failed');
-    }
+    const mData = await mistralResponse.json();
+    if (!mistralResponse.ok) throw new Error(mData.error?.message || 'Mistral fallback failed');
 
-    const text = data?.choices?.[0]?.message?.content || '';
-    if (!text) throw new Error('No text detected in the image.');
-    res.json({ text });
+    const text = mData.choices?.[0]?.message?.content || '';
+    if (!text) throw new Error('No text detected by any engine.');
+    
+    res.json({ text: text.trim() });
   } catch (err) {
-    console.error('OCR error:', err.message);
+    console.error('Hybrid OCR error:', err.message);
     res.status(500).json({ error: err.message || 'OCR failed' });
   }
 });

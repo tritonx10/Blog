@@ -201,7 +201,7 @@ exports.deleteComment = async (req, res) => {
     const { data: article, error: fetchError } = await supabase.from('articles').select('comments').eq('id', req.params.id).single();
     if (fetchError || !article) return res.status(404).json({ message: 'Not found' });
 
-    const comments = (article.comments || []).filter(c => c._id !== req.params.commentId);
+    const comments = (article.comments || []).filter(c => String(c._id || c.id) !== String(req.params.commentId));
 
     const { data, error } = await supabase.from('articles').update({ comments }).eq('id', req.params.id).select().single();
     if (error) throw error;

@@ -67,6 +67,10 @@
 
   .prose-literary {
     @apply font-body text-brown leading-relaxed text-lg;
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+    word-break: break-word;
+    hyphens: auto;
   }
 
   .prose-literary h2 {
@@ -83,6 +87,81 @@
 
   .prose-literary blockquote {
     @apply border-l-4 border-gold pl-5 italic text-brown-lighter my-6;
+  }
+  
+  .prose-literary ul {
+    @apply list-none pl-5 my-5 space-y-2;
+  }
+  
+  .prose-literary ul li {
+    @apply relative pl-6;
+  }
+  
+  .prose-literary ul li::before {
+    content: "✦";
+    @apply absolute left-0 text-gold text-xs top-1;
+  }
+  
+  .prose-literary ol {
+    @apply list-decimal pl-8 my-5 space-y-2;
+  }
+  
+  .prose-literary ol li {
+    @apply pl-2;
+  }
+
+  /* ── Magazine Layout Image System ────────────────── */
+  .prose-literary img {
+    @apply rounded-2xl transition-all duration-500 shadow-sm;
+    max-width: 100% !important;
+    height: auto !important;
+  }
+
+  /* Sizes */
+  .prose-literary img[data-size="small"] {
+    width: 35%;
+  }
+  .prose-literary img[data-size="medium"] {
+    width: 65%;
+  }
+  .prose-literary img[data-size="large"] {
+    width: 100%;
+  }
+
+  /* Positions & Wrapping */
+  .prose-literary img[data-align="left"] {
+    float: left;
+    margin: 0.5rem 2rem 1.5rem 0;
+  }
+  .prose-literary img[data-align="right"] {
+    float: right;
+    margin: 0.5rem 0 1.5rem 2rem;
+  }
+  .prose-literary img[data-align="center"] {
+    float: none;
+    display: block;
+    margin: 3rem auto;
+    width: 100%; /* Center usually wants more presence */
+  }
+  
+  /* Reset center if explicit size is set */
+  .prose-literary img[data-align="center"][data-size="small"] { width: 35%; }
+  .prose-literary img[data-align="center"][data-size="medium"] { width: 65%; }
+
+  /* Clearfix for wrapped content */
+  .prose-literary::after {
+    content: "";
+    display: table;
+    clear: both;
+  }
+
+  /* Mobile Responsive Guard */
+  @media (max-width: 768px) {
+    .prose-literary img {
+      float: none !important;
+      margin: 2rem auto !important;
+      width: 100% !important;
+    }
   }
 }
 

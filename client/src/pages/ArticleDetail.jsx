@@ -25,7 +25,7 @@ export default function ArticleDetail() {
   const handleAddComment = async (data) => {
     try {
       const res = await addArticleComment(article._id, data);
-      setArticle(res.data);
+      setArticle(prev => ({ ...prev, comments: res.data.comments }));
     } catch (err) {
       alert('Failed to post comment.');
     }
@@ -35,7 +35,7 @@ export default function ArticleDetail() {
     if (!window.confirm('Delete this comment?')) return;
     try {
       const res = await deleteArticleComment(article._id, commentId);
-      setArticle(res.data);
+      setArticle(prev => ({ ...prev, comments: res.data.comments }));
     } catch (err) {
       alert('Failed to delete comment.');
     }

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { getPosts, getBooks } from '../lib/api';
+import { getPosts, getBooks, getArticles } from '../lib/api';
 import PostCard from '../components/PostCard';
 import BookCard from '../components/BookCard';
 import { GridSkeleton, Spinner } from '../components/Loader';
@@ -20,9 +20,20 @@ export default function Home() {
   const [loadingBooks, setLoadingBooks] = useState(true);
 
   useEffect(() => {
-    getPosts({ status: 'Published', limit: 3 })
-      .then((res) => setLatestPosts(res.data.posts))
+    Promise.all([
+      getPosts({ status: 'Published', limit: 3 }),
+      getArticles({ status: 'Published', limit: 3 })
+    ])
+      .then(([postsRes, articlesRes]) => {
+        const posts = postsRes.data.posts.map(p => ({ ...p, _postType: 'blog' }));
+        const articles = articlesRes.data.articles.map(a => ({ ...a, _postType: 'article' }));
+        const combined = [...posts, ...articles]
+          .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+          .slice(0, 3);
+        setLatestPosts(combined);
+      })
       .finally(() => setLoadingPosts(false));
+      
     getBooks({ status: 'Published', limit: 6 })
       .then((res) => setFeaturedBooks(res.data.books))
       .finally(() => setLoadingBooks(false));
@@ -31,12 +42,14 @@ export default function Home() {
   return (
     <div className="flex flex-col">
       {/* ── Hero ────────────────────────────── */}
-      <section className="relative min-h-[88vh] flex items-center justify-center overflow-hidden bg-gradient-to-br from-parchment via-parchment-dark/30 to-parchment">
+      <section className="relative min-h-[80vh] sm:min-h-[90vh] pt-12 pb-12 sm:py-20 flex flex-col items-center justify-between overflow-hidden bg-gradient-to-br from-parchment via-parchment-dark/30 to-parchment">
         {/* Decorative blobs */}
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute top-16 left-10 w-64 h-64 rounded-full bg-gold/5 blur-3xl" />
           <div className="absolute bottom-20 right-10 w-80 h-80 rounded-full bg-sage/8 blur-3xl" />
         </div>
+
+        <div className="hidden sm:block" /> {/* Spacer for centering - desktop only */}
 
         <div className="relative text-center px-6 max-w-3xl mx-auto flex flex-col items-center gap-7">
           <motion.div
@@ -77,8 +90,8 @@ export default function Home() {
           </motion.div>
         </div>
 
-        {/* Scroll hint */}
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1.5 text-brown-lighter/60">
+        {/* Scroll hint - Positioned relatively at the bottom */}
+        <div className="mt-8 sm:mt-12 flex flex-col items-center gap-1.5 text-brown-lighter/60">
           <span className="font-sans text-xs tracking-widest uppercase">Scroll</span>
           <motion.div
             animate={{ y: [0, 6, 0] }}
@@ -98,7 +111,7 @@ export default function Home() {
           className="mb-10 flex items-end justify-between"
         >
           <div>
-            <h2 className="section-title">Latest from the Blog</h2>
+            <h2 className="section-title">Latest from the Author</h2>
             <p className="section-subtitle">Fresh words, warm stories</p>
           </div>
           <Link to="/blog" className="hidden sm:flex items-center gap-1.5 text-gold font-sans text-sm hover:gap-2.5 transition-all">
@@ -120,7 +133,7 @@ export default function Home() {
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.1, duration: 0.4 }}
               >
-                <PostCard post={post} type="blog" />
+                <PostCard post={post} type={post._postType || 'blog'} />
               </motion.div>
             ))}
           </div>

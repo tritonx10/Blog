@@ -25,7 +25,7 @@ export default function BookDetail() {
   const handleAddComment = async (data) => {
     try {
       const res = await addBookComment(book._id, data);
-      setBook(res.data);
+      setBook(prev => ({ ...prev, comments: res.data.comments }));
     } catch (err) {
       alert('Failed to post comment.');
     }
@@ -35,7 +35,7 @@ export default function BookDetail() {
     if (!window.confirm('Delete this comment?')) return;
     try {
       const res = await deleteBookComment(book._id, commentId);
-      setBook(res.data);
+      setBook(prev => ({ ...prev, comments: res.data.comments }));
     } catch (err) {
       alert('Failed to delete comment.');
     }

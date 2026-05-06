@@ -17,14 +17,21 @@ export default function PostCard({ post, type = 'blog' }) {
   return (
     <Link to={href} className="group block card h-full">
       {/* Cover image */}
-      <div className="relative h-48 overflow-hidden bg-parchment-dark">
+      <div className="relative h-48 overflow-hidden bg-parchment-dark shadow-[inset_0_0_20px_rgba(0,0,0,0.05)]">
         {post.coverImage ? (
-          <img
-            src={post.coverImage}
-            alt={post.title}
-            loading="lazy"
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-          />
+          <>
+            <img
+              src={post.coverImage}
+              alt=""
+              className="absolute inset-0 w-full h-full object-cover blur-md opacity-25 scale-110 pointer-events-none"
+            />
+            <img
+              src={post.coverImage}
+              alt={post.title}
+              loading="lazy"
+              className="relative w-full h-full object-contain transition-transform duration-500 group-hover:scale-105"
+            />
+          </>
         ) : (
           <div className="w-full h-full flex items-center justify-center">
             <span className="font-heading text-5xl text-gold/30">✦</span>
